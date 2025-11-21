@@ -8,37 +8,43 @@ import {
   handleOptionsRequest,
 } from '@/lib/api/utils';
 import { supabaseAdmin } from '@/lib/supabase/client';
+import type { BusinessInfo } from '@/types/database';
 
 // Types for this endpoint
-interface CreateCategoryRequest {
-  name: string;
-  slug: string;
-  description?: string;
-  sort_order?: number;
+interface CreateBusinessInfoRequest {
+  key: string;
+  value: any;
+  type: 'text' | 'email' | 'phone' | 'address' | 'hours' | 'social';
   is_active?: boolean;
 }
 
-interface UpdateCategoryRequest extends Partial<CreateCategoryRequest> {}
+interface UpdateBusinessInfoRequest extends Partial<CreateBusinessInfoRequest> {}
 
-// GET /api/categories - List all course categories
+// GET /api/business-info - List all business info
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
     const page = parseInt(searchParams.get('page') || '1');
-    const limit = parseInt(searchParams.get('limit') || '50'); // Categories don't need large pagination
+    const limit = parseInt(searchParams.get('limit') || '10');
     const search = searchParams.get('search');
+    const type = searchParams.get('type');
     const isActive = searchParams.get('is_active');
 
     // Build query
     let query = supabaseAdmin
-      .from('courses_categories')
+      .from('business_info')
       .select('*')
-      .order('sort_order', { ascending: true })
+      .order('type', { ascending: true })
+      .order('key', { ascending: true })
       .order('created_at', { ascending: false });
 
     // Apply filters
     if (search) {
-      query = query.or(`name.ilike.%${search}%,description.ilike.%${search}%`);
+      query = query.or(`key.ilike.%${search}%,type.ilike.%${search}%`);
+    }
+
+    if (type) {
+      query = query.eq('type', type);
     }
 
     if (isActive !== null) {
@@ -56,11 +62,15 @@ export async function GET(request: NextRequest) {
 
     // Get total count for pagination
     let countQuery = supabaseAdmin
-      .from('courses_categories')
+      .from('business_info')
       .select('*', { count: 'exact', head: true });
 
     if (search) {
-      countQuery = countQuery.or(`name.ilike.%${search}%,description.ilike.%${search}%`);
+      countQuery = countQuery.or(`key.ilike.%${search}%,type.ilike.%${search}%`);
+    }
+
+    if (type) {
+      countQuery = countQuery.eq('type', type);
     }
 
     if (isActive !== null) {
@@ -85,13 +95,13 @@ export async function GET(request: NextRequest) {
   }
 }
 
-// POST /api/categories - Create new category
+// POST /api/business-info - Create new business info
 export async function POST(request: NextRequest) {
   try {
-    const body: CreateCategoryRequest = await request.json();
+    const body: CreateBusinessInfoRequest = await request.json();
 
     // Validate required fields
-    const { isValid, missingFields } = validateRequiredFields(body, ['name']);
+    const { isValid, missingFields } = validateRequiredFields(body, ['key', 'value', 'type']);
     if (!isValid) {
       return createErrorResponse(
         `Missing required fields: ${missingFields.join(', ')}`,
@@ -99,54 +109,45 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Auto-generate slug if not provided
-    let slug = body.slug;
-    if (!slug) {
-      slug = body.name
-        .toLowerCase()
-        .replace(/[^a-z0-9\s-]/g, '')
-        .replace(/\s+/g, '-')
-        .replace(/-+/g, '-')
-        .trim();
+    // Validate type
+    const validTypes = ['text', 'email', 'phone', 'address', 'hours', 'social'];
+    if (!validTypes.includes(body.type)) {
+      return createErrorResponse(
+        `Invalid type. Must be one of: ${validTypes.join(', ')}`,
+        HTTP_STATUS.BAD_REQUEST
+      );
     }
 
-    // Check if slug is unique
-    const { data: existingCategory, error: checkError } = await supabaseAdmin
-      .from('courses_categories')
+    // Check if key already exists
+    const { data: existing, error: checkError } = await supabaseAdmin
+      .from('business_info')
       .select('id')
-      .eq('slug', slug)
+      .eq('key', body.key)
       .single();
 
-    if (checkError && checkError.code !== 'PGRST116') { // PGRST116 is "not found"
-      throw checkError;
-    }
-
-    if (existingCategory) {
+    if (existing) {
       return createErrorResponse(
-        'Category slug must be unique',
+        'Business info with this key already exists',
         HTTP_STATUS.CONFLICT
       );
     }
 
-    // Create the category
-    const newCategory = {
-      name: body.name,
-      slug,
-      description: body.description,
-      sort_order: body.sort_order || 0,
-      is_active: body.is_active !== undefined ? body.is_active : true,
+    // Create the business info
+    const newBusinessInfo = {
+      ...body,
+      is_active: body.is_active ?? true,
       updated_at: new Date().toISOString(),
     };
 
     const { data, error } = await supabaseAdmin
-      .from('courses_categories')
-      .insert(newCategory)
+      .from('business_info')
+      .insert(newBusinessInfo)
       .select()
       .single();
 
     if (error) throw error;
 
-    return createSuccessResponse(data, 'Category created successfully', HTTP_STATUS.CREATED);
+    return createSuccessResponse(data, 'Business info created successfully', HTTP_STATUS.CREATED);
   } catch (error) {
     return handleApiError(error);
   }

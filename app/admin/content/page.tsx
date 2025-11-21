@@ -15,25 +15,40 @@ export default function AdminContent() {
           </Button>
         </Link>
 
-        <Button variant="outline" className="w-full h-20 flex flex-col items-center justify-center" disabled>
-          <span className="text-lg font-semibold">Services</span>
-          <span className="text-sm text-gray-600">Coming soon</span>
-        </Button>
+        <Link href="/admin/content/services">
+          <Button variant="outline" className="w-full h-20 flex flex-col items-center justify-center">
+            <span className="text-lg font-semibold">Services</span>
+            <span className="text-sm text-gray-600">Manage service offerings</span>
+          </Button>
+        </Link>
 
-        <Button variant="outline" className="w-full h-20 flex flex-col items-center justify-center" disabled>
-          <span className="text-lg font-semibold">Categories</span>
-          <span className="text-sm text-gray-600">Coming soon</span>
-        </Button>
+        <Link href="/admin/content/categories">
+          <Button variant="outline" className="w-full h-20 flex flex-col items-center justify-center">
+            <span className="text-lg font-semibold">Categories</span>
+            <span className="text-sm text-gray-600">Manage categories</span>
+          </Button>
+        </Link>
 
-        <Button variant="outline" className="w-full h-20 flex flex-col items-center justify-center" disabled>
-          <span className="text-lg font-semibold">Offers</span>
-          <span className="text-sm text-gray-600">Coming soon</span>
-        </Button>
+        <Link href="/admin/content/offers">
+          <Button variant="outline" className="w-full h-20 flex flex-col items-center justify-center">
+            <span className="text-lg font-semibold">Offers</span>
+            <span className="text-sm text-gray-600">Manage discount offers</span>
+          </Button>
+        </Link>
 
-        <Button variant="outline" className="w-full h-20 flex flex-col items-center justify-center" disabled>
-          <span className="text-lg font-semibold">FAQs</span>
-          <span className="text-sm text-gray-600">Coming soon</span>
-        </Button>
+        <Link href="/admin/content/faqs">
+          <Button variant="outline" className="w-full h-20 flex flex-col items-center justify-center">
+            <span className="text-lg font-semibold">FAQs</span>
+            <span className="text-sm text-gray-600">Manage frequently asked questions</span>
+          </Button>
+        </Link>
+
+        <Link href="/admin/content/business-info">
+          <Button variant="outline" className="w-full h-20 flex flex-col items-center justify-center">
+            <span className="text-lg font-semibold">Business Info</span>
+            <span className="text-sm text-gray-600">Manage contact details and info</span>
+          </Button>
+        </Link>
 
         <Button variant="outline" className="w-full h-20 flex flex-col items-center justify-center" disabled>
           <span className="text-lg font-semibold">Settings</span>

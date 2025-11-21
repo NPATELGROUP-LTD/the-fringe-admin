@@ -21,6 +21,7 @@ interface DataTableProps<T> {
   columns: Column<T>[]
   filterable?: boolean
   filterPlaceholder?: string
+  onEdit?: (item: T) => void
 }
 
 export function DataTable<T extends Record<string, any>>({
@@ -28,6 +29,7 @@ export function DataTable<T extends Record<string, any>>({
   columns,
   filterable = true,
   filterPlaceholder = "Search...",
+  onEdit,
 }: DataTableProps<T>) {
   const [sortKey, setSortKey] = React.useState<keyof T | null>(null)
   const [sortDirection, setSortDirection] = React.useState<"asc" | "desc">("asc")
@@ -97,6 +99,7 @@ export function DataTable<T extends Record<string, any>>({
                 )}
               </TableHead>
             ))}
+            {onEdit && <TableHead>Actions</TableHead>}
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -107,6 +110,17 @@ export function DataTable<T extends Record<string, any>>({
                   {String(item[column.key])}
                 </TableCell>
               ))}
+              {onEdit && (
+                <TableCell>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => onEdit(item)}
+                  >
+                    Edit
+                  </Button>
+                </TableCell>
+              )}
             </TableRow>
           ))}
         </TableBody>

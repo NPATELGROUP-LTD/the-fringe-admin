@@ -8,37 +8,43 @@ import {
   handleOptionsRequest,
 } from '@/lib/api/utils';
 import { supabaseAdmin } from '@/lib/supabase/client';
+import type { FAQ } from '@/types/database';
 
 // Types for this endpoint
-interface CreateCategoryRequest {
-  name: string;
-  slug: string;
-  description?: string;
+interface CreateFAQRequest {
+  category?: string;
+  question: string;
+  answer: string;
   sort_order?: number;
   is_active?: boolean;
 }
 
-interface UpdateCategoryRequest extends Partial<CreateCategoryRequest> {}
+interface UpdateFAQRequest extends Partial<CreateFAQRequest> {}
 
-// GET /api/categories - List all course categories
+// GET /api/faqs - List all FAQs
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
     const page = parseInt(searchParams.get('page') || '1');
-    const limit = parseInt(searchParams.get('limit') || '50'); // Categories don't need large pagination
+    const limit = parseInt(searchParams.get('limit') || '10');
     const search = searchParams.get('search');
+    const category = searchParams.get('category');
     const isActive = searchParams.get('is_active');
 
     // Build query
     let query = supabaseAdmin
-      .from('courses_categories')
+      .from('faqs')
       .select('*')
       .order('sort_order', { ascending: true })
       .order('created_at', { ascending: false });
 
     // Apply filters
     if (search) {
-      query = query.or(`name.ilike.%${search}%,description.ilike.%${search}%`);
+      query = query.or(`question.ilike.%${search}%,answer.ilike.%${search}%`);
+    }
+
+    if (category) {
+      query = query.eq('category', category);
     }
 
     if (isActive !== null) {
@@ -56,11 +62,15 @@ export async function GET(request: NextRequest) {
 
     // Get total count for pagination
     let countQuery = supabaseAdmin
-      .from('courses_categories')
+      .from('faqs')
       .select('*', { count: 'exact', head: true });
 
     if (search) {
-      countQuery = countQuery.or(`name.ilike.%${search}%,description.ilike.%${search}%`);
+      countQuery = countQuery.or(`question.ilike.%${search}%,answer.ilike.%${search}%`);
+    }
+
+    if (category) {
+      countQuery = countQuery.eq('category', category);
     }
 
     if (isActive !== null) {
@@ -85,13 +95,13 @@ export async function GET(request: NextRequest) {
   }
 }
 
-// POST /api/categories - Create new category
+// POST /api/faqs - Create new FAQ
 export async function POST(request: NextRequest) {
   try {
-    const body: CreateCategoryRequest = await request.json();
+    const body: CreateFAQRequest = await request.json();
 
     // Validate required fields
-    const { isValid, missingFields } = validateRequiredFields(body, ['name']);
+    const { isValid, missingFields } = validateRequiredFields(body, ['question', 'answer']);
     if (!isValid) {
       return createErrorResponse(
         `Missing required fields: ${missingFields.join(', ')}`,
@@ -99,54 +109,23 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Auto-generate slug if not provided
-    let slug = body.slug;
-    if (!slug) {
-      slug = body.name
-        .toLowerCase()
-        .replace(/[^a-z0-9\s-]/g, '')
-        .replace(/\s+/g, '-')
-        .replace(/-+/g, '-')
-        .trim();
-    }
-
-    // Check if slug is unique
-    const { data: existingCategory, error: checkError } = await supabaseAdmin
-      .from('courses_categories')
-      .select('id')
-      .eq('slug', slug)
-      .single();
-
-    if (checkError && checkError.code !== 'PGRST116') { // PGRST116 is "not found"
-      throw checkError;
-    }
-
-    if (existingCategory) {
-      return createErrorResponse(
-        'Category slug must be unique',
-        HTTP_STATUS.CONFLICT
-      );
-    }
-
-    // Create the category
-    const newCategory = {
-      name: body.name,
-      slug,
-      description: body.description,
+    // Create the FAQ
+    const newFAQ = {
+      ...body,
       sort_order: body.sort_order || 0,
-      is_active: body.is_active !== undefined ? body.is_active : true,
+      is_active: body.is_active ?? true,
       updated_at: new Date().toISOString(),
     };
 
     const { data, error } = await supabaseAdmin
-      .from('courses_categories')
-      .insert(newCategory)
+      .from('faqs')
+      .insert(newFAQ)
       .select()
       .single();
 
     if (error) throw error;
 
-    return createSuccessResponse(data, 'Category created successfully', HTTP_STATUS.CREATED);
+    return createSuccessResponse(data, 'FAQ created successfully', HTTP_STATUS.CREATED);
   } catch (error) {
     return handleApiError(error);
   }

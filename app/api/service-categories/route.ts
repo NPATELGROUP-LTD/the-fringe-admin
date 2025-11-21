@@ -20,7 +20,7 @@ interface CreateCategoryRequest {
 
 interface UpdateCategoryRequest extends Partial<CreateCategoryRequest> {}
 
-// GET /api/categories - List all course categories
+// GET /api/service-categories - List all service categories
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
@@ -31,7 +31,7 @@ export async function GET(request: NextRequest) {
 
     // Build query
     let query = supabaseAdmin
-      .from('courses_categories')
+      .from('service_categories')
       .select('*')
       .order('sort_order', { ascending: true })
       .order('created_at', { ascending: false });
@@ -56,7 +56,7 @@ export async function GET(request: NextRequest) {
 
     // Get total count for pagination
     let countQuery = supabaseAdmin
-      .from('courses_categories')
+      .from('service_categories')
       .select('*', { count: 'exact', head: true });
 
     if (search) {
@@ -85,7 +85,7 @@ export async function GET(request: NextRequest) {
   }
 }
 
-// POST /api/categories - Create new category
+// POST /api/service-categories - Create new service category
 export async function POST(request: NextRequest) {
   try {
     const body: CreateCategoryRequest = await request.json();
@@ -112,7 +112,7 @@ export async function POST(request: NextRequest) {
 
     // Check if slug is unique
     const { data: existingCategory, error: checkError } = await supabaseAdmin
-      .from('courses_categories')
+      .from('service_categories')
       .select('id')
       .eq('slug', slug)
       .single();
@@ -123,7 +123,7 @@ export async function POST(request: NextRequest) {
 
     if (existingCategory) {
       return createErrorResponse(
-        'Category slug must be unique',
+        'Service category slug must be unique',
         HTTP_STATUS.CONFLICT
       );
     }
@@ -139,14 +139,14 @@ export async function POST(request: NextRequest) {
     };
 
     const { data, error } = await supabaseAdmin
-      .from('courses_categories')
+      .from('service_categories')
       .insert(newCategory)
       .select()
       .single();
 
     if (error) throw error;
 
-    return createSuccessResponse(data, 'Category created successfully', HTTP_STATUS.CREATED);
+    return createSuccessResponse(data, 'Service category created successfully', HTTP_STATUS.CREATED);
   } catch (error) {
     return handleApiError(error);
   }

@@ -8,41 +8,49 @@ import {
   handleOptionsRequest,
 } from '@/lib/api/utils';
 import { supabaseAdmin } from '@/lib/supabase/client';
+import type { Offer } from '@/types/database';
 
 // Types for this endpoint
-interface CreateCategoryRequest {
-  name: string;
-  slug: string;
-  description?: string;
-  sort_order?: number;
+interface CreateOfferRequest {
+  title: string;
+  description: string;
+  discount_type: 'percentage' | 'fixed';
+  discount_value: number;
+  valid_from: string;
+  valid_until: string;
+  usage_limit?: number;
   is_active?: boolean;
 }
 
-interface UpdateCategoryRequest extends Partial<CreateCategoryRequest> {}
+interface UpdateOfferRequest extends Partial<CreateOfferRequest> {}
 
-// GET /api/categories - List all course categories
+// GET /api/offers - List all offers
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
     const page = parseInt(searchParams.get('page') || '1');
-    const limit = parseInt(searchParams.get('limit') || '50'); // Categories don't need large pagination
+    const limit = parseInt(searchParams.get('limit') || '10');
     const search = searchParams.get('search');
     const isActive = searchParams.get('is_active');
+    const discountType = searchParams.get('discount_type');
 
     // Build query
     let query = supabaseAdmin
-      .from('courses_categories')
+      .from('offers')
       .select('*')
-      .order('sort_order', { ascending: true })
       .order('created_at', { ascending: false });
 
     // Apply filters
     if (search) {
-      query = query.or(`name.ilike.%${search}%,description.ilike.%${search}%`);
+      query = query.or(`title.ilike.%${search}%,description.ilike.%${search}%`);
     }
 
     if (isActive !== null) {
       query = query.eq('is_active', isActive === 'true');
+    }
+
+    if (discountType) {
+      query = query.eq('discount_type', discountType);
     }
 
     // Apply pagination
@@ -56,15 +64,19 @@ export async function GET(request: NextRequest) {
 
     // Get total count for pagination
     let countQuery = supabaseAdmin
-      .from('courses_categories')
+      .from('offers')
       .select('*', { count: 'exact', head: true });
 
     if (search) {
-      countQuery = countQuery.or(`name.ilike.%${search}%,description.ilike.%${search}%`);
+      countQuery = countQuery.or(`title.ilike.%${search}%,description.ilike.%${search}%`);
     }
 
     if (isActive !== null) {
       countQuery = countQuery.eq('is_active', isActive === 'true');
+    }
+
+    if (discountType) {
+      countQuery = countQuery.eq('discount_type', discountType);
     }
 
     const { count, error: countError } = await countQuery;
@@ -85,13 +97,13 @@ export async function GET(request: NextRequest) {
   }
 }
 
-// POST /api/categories - Create new category
+// POST /api/offers - Create new offer
 export async function POST(request: NextRequest) {
   try {
-    const body: CreateCategoryRequest = await request.json();
+    const body: CreateOfferRequest = await request.json();
 
     // Validate required fields
-    const { isValid, missingFields } = validateRequiredFields(body, ['name']);
+    const { isValid, missingFields } = validateRequiredFields(body, ['title', 'description', 'discount_type', 'discount_value', 'valid_from', 'valid_until']);
     if (!isValid) {
       return createErrorResponse(
         `Missing required fields: ${missingFields.join(', ')}`,
@@ -99,54 +111,50 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Auto-generate slug if not provided
-    let slug = body.slug;
-    if (!slug) {
-      slug = body.name
-        .toLowerCase()
-        .replace(/[^a-z0-9\s-]/g, '')
-        .replace(/\s+/g, '-')
-        .replace(/-+/g, '-')
-        .trim();
-    }
-
-    // Check if slug is unique
-    const { data: existingCategory, error: checkError } = await supabaseAdmin
-      .from('courses_categories')
-      .select('id')
-      .eq('slug', slug)
-      .single();
-
-    if (checkError && checkError.code !== 'PGRST116') { // PGRST116 is "not found"
-      throw checkError;
-    }
-
-    if (existingCategory) {
+    // Validate discount value
+    if (body.discount_value <= 0) {
       return createErrorResponse(
-        'Category slug must be unique',
-        HTTP_STATUS.CONFLICT
+        'Discount value must be greater than 0',
+        HTTP_STATUS.BAD_REQUEST
       );
     }
 
-    // Create the category
-    const newCategory = {
-      name: body.name,
-      slug,
-      description: body.description,
-      sort_order: body.sort_order || 0,
-      is_active: body.is_active !== undefined ? body.is_active : true,
+    // Validate discount type specific rules
+    if (body.discount_type === 'percentage' && body.discount_value > 100) {
+      return createErrorResponse(
+        'Percentage discount cannot exceed 100%',
+        HTTP_STATUS.BAD_REQUEST
+      );
+    }
+
+    // Validate dates
+    const validFrom = new Date(body.valid_from);
+    const validUntil = new Date(body.valid_until);
+    const now = new Date();
+
+    if (validFrom >= validUntil) {
+      return createErrorResponse(
+        'Valid until date must be after valid from date',
+        HTTP_STATUS.BAD_REQUEST
+      );
+    }
+
+    // Create the offer
+    const newOffer = {
+      ...body,
+      usage_count: 0,
       updated_at: new Date().toISOString(),
     };
 
     const { data, error } = await supabaseAdmin
-      .from('courses_categories')
-      .insert(newCategory)
+      .from('offers')
+      .insert(newOffer)
       .select()
       .single();
 
     if (error) throw error;
 
-    return createSuccessResponse(data, 'Category created successfully', HTTP_STATUS.CREATED);
+    return createSuccessResponse(data, 'Offer created successfully', HTTP_STATUS.CREATED);
   } catch (error) {
     return handleApiError(error);
   }
