@@ -190,6 +190,7 @@ export function ServiceForm({ service, onSave, onCancel }: ServiceFormProps) {
           label="Service Image"
           value={watch('image_url')}
           onChange={(url) => setValue('image_url', url)}
+          error={errors.image_url?.message}
         />
       </div>
 

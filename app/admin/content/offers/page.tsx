@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/Button';
 import { DataTable, Column } from '@/components/ui/DataTable';
 import { Modal, ModalHeader, ModalBody } from '@/components/ui/Modal';
+import { BulkOperations } from '@/components/ui/BulkOperations';
 import { useApiRequest } from '@/lib/hooks/useApiRequest';
 import type { Offer } from '@/types/database';
 import { OfferForm } from './OfferForm';
@@ -38,6 +39,7 @@ export default function OffersPage() {
   const [originalOffers, setOriginalOffers] = useState<Offer[]>([]);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [editingOffer, setEditingOffer] = useState<Offer | null>(null);
+  const [selectedOffers, setSelectedOffers] = useState<OfferDisplayData[]>([]);
 
   const { data, loading, error, request } = useApiRequest<OffersResponse>();
 
@@ -91,7 +93,95 @@ export default function OffersPage() {
     loadOffers(); // Reload offers
   };
 
-  const columns: Column<Offer>[] = [
+  const handleSelectionChange = (offers: OfferDisplayData[]) => {
+    setSelectedOffers(offers);
+  };
+
+  const handleClearSelection = () => {
+    setSelectedOffers([]);
+  };
+
+  // Bulk operations
+  const handleBulkStatusChange = async (offers: OfferDisplayData[], value?: string) => {
+    const activate = value === 'true';
+    const results = { total: offers.length, successful: 0, failed: 0, errors: [] as any[] };
+
+    for (const offer of offers) {
+      try {
+        const response = await fetch(`/api/offers/${offer.id}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ is_active: activate })
+        });
+
+        if (response.ok) {
+          results.successful++;
+        } else {
+          results.failed++;
+          results.errors.push({ id: offer.id, error: 'Failed to update status' });
+        }
+      } catch (error) {
+        results.failed++;
+        results.errors.push({ id: offer.id, error: 'Network error' });
+      }
+    }
+
+    if (results.successful > 0) {
+      loadOffers();
+    }
+
+    return results;
+  };
+
+  const handleBulkDelete = async (offers: OfferDisplayData[], value?: string) => {
+    const results = { total: offers.length, successful: 0, failed: 0, errors: [] as any[] };
+
+    for (const offer of offers) {
+      try {
+        const response = await fetch(`/api/offers/${offer.id}`, {
+          method: 'DELETE'
+        });
+
+        if (response.ok) {
+          results.successful++;
+        } else {
+          results.failed++;
+          results.errors.push({ id: offer.id, error: 'Failed to delete offer' });
+        }
+      } catch (error) {
+        results.failed++;
+        results.errors.push({ id: offer.id, error: 'Network error' });
+      }
+    }
+
+    if (results.successful > 0) {
+      loadOffers();
+    }
+
+    return results;
+  };
+
+  const bulkActions = [
+    {
+      key: 'status',
+      label: 'Status',
+      type: 'status' as const,
+      options: [
+        { value: 'true', label: 'Activate' },
+        { value: 'false', label: 'Deactivate' }
+      ],
+      handler: handleBulkStatusChange,
+    },
+    {
+      key: 'delete',
+      label: 'Delete',
+      type: 'delete' as const,
+      handler: handleBulkDelete,
+      confirmMessage: (count: number) => `Are you sure you want to delete ${count} offer${count !== 1 ? 's' : ''}? This action cannot be undone.`,
+    },
+  ];
+
+  const columns: Column<OfferDisplayData>[] = [
     {
       key: 'title',
       label: 'Title',
@@ -140,23 +230,21 @@ export default function OffersPage() {
   ];
 
   // Custom render function for columns
-  const renderCell = (offer: Offer, column: Column<Offer>) => {
+  const renderCell = (offer: OfferDisplayData, column: Column<OfferDisplayData>) => {
     if (column.key === 'discount_value') {
-      return offer.discount_type === 'percentage'
-        ? `${offer.discount_value}%`
-        : `$${offer.discount_value}`;
+      return offer.discount_value;
     }
     if (column.key === 'valid_from' || column.key === 'valid_until') {
-      return new Date(offer[column.key]).toLocaleDateString();
+      return offer[column.key];
     }
     if (column.key === 'usage_limit') {
-      return offer.usage_limit ? offer.usage_limit.toString() : 'Unlimited';
+      return offer.usage_limit;
     }
     if (column.key === 'is_active') {
-      return offer.is_active ? 'Yes' : 'No';
+      return offer.is_active;
     }
     if (column.key === 'created_at') {
-      return new Date(offer.created_at).toLocaleDateString();
+      return offer.created_at;
     }
     return String(offer[column.key]);
   };
@@ -191,11 +279,20 @@ export default function OffersPage() {
         </Button>
       </div>
 
+      <BulkOperations
+        selectedItems={selectedOffers}
+        onClearSelection={handleClearSelection}
+        availableActions={bulkActions}
+      />
+
       <DataTable
         data={offers as any}
         columns={columns}
         filterable={true}
         filterPlaceholder="Search offers..."
+        selectable={true}
+        selectedItems={selectedOffers}
+        onSelectionChange={handleSelectionChange}
       />
 
       {/* Create/Edit Modal */}

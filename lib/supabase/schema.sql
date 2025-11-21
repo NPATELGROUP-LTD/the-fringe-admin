@@ -558,6 +558,89 @@ ALTER TABLE email_campaigns ENABLE ROW LEVEL SECURITY;
 ALTER TABLE email_campaign_sends ENABLE ROW LEVEL SECURITY;
 ALTER TABLE email_campaign_analytics ENABLE ROW LEVEL SECURITY;
 
+-- Performance Indexes for Search and Filtering
+
+-- Courses indexes
+CREATE INDEX idx_courses_title ON courses USING gin(to_tsvector('english', title));
+CREATE INDEX idx_courses_description ON courses USING gin(to_tsvector('english', description));
+CREATE INDEX idx_courses_slug ON courses(slug);
+CREATE INDEX idx_courses_category_id ON courses(category_id);
+CREATE INDEX idx_courses_is_active ON courses(is_active);
+CREATE INDEX idx_courses_created_at ON courses(created_at);
+
+-- Course Categories indexes
+CREATE INDEX idx_courses_categories_name ON courses_categories USING gin(to_tsvector('english', name));
+CREATE INDEX idx_courses_categories_slug ON courses_categories(slug);
+CREATE INDEX idx_courses_categories_is_active ON courses_categories(is_active);
+
+-- Services indexes
+CREATE INDEX idx_services_title ON services USING gin(to_tsvector('english', title));
+CREATE INDEX idx_services_description ON services USING gin(to_tsvector('english', description));
+CREATE INDEX idx_services_slug ON services(slug);
+CREATE INDEX idx_services_category_id ON services(category_id);
+CREATE INDEX idx_services_is_active ON services(is_active);
+CREATE INDEX idx_services_created_at ON services(created_at);
+
+-- Service Categories indexes
+CREATE INDEX idx_service_categories_name ON service_categories USING gin(to_tsvector('english', name));
+CREATE INDEX idx_service_categories_slug ON service_categories(slug);
+CREATE INDEX idx_service_categories_is_active ON service_categories(is_active);
+
+-- Offers indexes
+CREATE INDEX idx_offers_title ON offers USING gin(to_tsvector('english', title));
+CREATE INDEX idx_offers_description ON offers USING gin(to_tsvector('english', description));
+CREATE INDEX idx_offers_is_active ON offers(is_active);
+CREATE INDEX idx_offers_valid_from ON offers(valid_from);
+CREATE INDEX idx_offers_valid_until ON offers(valid_until);
+
+-- FAQs indexes
+CREATE INDEX idx_faqs_question ON faqs USING gin(to_tsvector('english', question));
+CREATE INDEX idx_faqs_answer ON faqs USING gin(to_tsvector('english', answer));
+CREATE INDEX idx_faqs_category ON faqs(category);
+CREATE INDEX idx_faqs_is_active ON faqs(is_active);
+
+-- Contact Submissions indexes
+CREATE INDEX idx_contact_submissions_name ON contact_submissions USING gin(to_tsvector('english', name));
+CREATE INDEX idx_contact_submissions_email ON contact_submissions(email);
+CREATE INDEX idx_contact_submissions_subject ON contact_submissions USING gin(to_tsvector('english', subject));
+CREATE INDEX idx_contact_submissions_message ON contact_submissions USING gin(to_tsvector('english', message));
+CREATE INDEX idx_contact_submissions_is_read ON contact_submissions(is_read);
+CREATE INDEX idx_contact_submissions_created_at ON contact_submissions(created_at);
+
+-- Newsletter Subscriptions indexes
+CREATE INDEX idx_newsletter_subscriptions_email ON newsletter_subscriptions(email);
+CREATE INDEX idx_newsletter_subscriptions_first_name ON newsletter_subscriptions USING gin(to_tsvector('english', first_name));
+CREATE INDEX idx_newsletter_subscriptions_last_name ON newsletter_subscriptions USING gin(to_tsvector('english', last_name));
+CREATE INDEX idx_newsletter_subscriptions_status ON newsletter_subscriptions(status);
+
+-- Reviews indexes
+CREATE INDEX idx_reviews_course_id ON reviews(course_id);
+CREATE INDEX idx_reviews_name ON reviews USING gin(to_tsvector('english', name));
+CREATE INDEX idx_reviews_email ON reviews(email);
+CREATE INDEX idx_reviews_title ON reviews USING gin(to_tsvector('english', title));
+CREATE INDEX idx_reviews_content ON reviews USING gin(to_tsvector('english', content));
+CREATE INDEX idx_reviews_rating ON reviews(rating);
+CREATE INDEX idx_reviews_is_approved ON reviews(is_approved);
+
+-- Testimonials indexes
+CREATE INDEX idx_testimonials_name ON testimonials USING gin(to_tsvector('english', name));
+CREATE INDEX idx_testimonials_email ON testimonials(email);
+CREATE INDEX idx_testimonials_company ON testimonials USING gin(to_tsvector('english', company));
+CREATE INDEX idx_testimonials_content ON testimonials USING gin(to_tsvector('english', content));
+CREATE INDEX idx_testimonials_rating ON testimonials(rating);
+CREATE INDEX idx_testimonials_is_approved ON testimonials(is_approved);
+CREATE INDEX idx_testimonials_is_featured ON testimonials(is_featured);
+
+-- Business Info indexes
+CREATE INDEX idx_business_info_key ON business_info(key);
+CREATE INDEX idx_business_info_type ON business_info(type);
+CREATE INDEX idx_business_info_is_active ON business_info(is_active);
+
+-- Site Settings indexes
+CREATE INDEX idx_site_settings_key ON site_settings(key);
+CREATE INDEX idx_site_settings_category ON site_settings(category);
+CREATE INDEX idx_site_settings_is_public ON site_settings(is_public);
+
 -- Email Templates policies
 CREATE POLICY "Admin and super_admin manage email templates" ON email_templates
   FOR ALL USING (

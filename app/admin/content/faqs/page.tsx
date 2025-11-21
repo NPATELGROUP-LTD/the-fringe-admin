@@ -7,6 +7,7 @@ import { Modal, ModalHeader, ModalBody } from '@/components/ui/Modal';
 import { Input } from '@/components/ui/Input';
 import { Select } from '@/components/ui/Select';
 import { Label } from '@/components/ui/Label';
+import { BulkOperations } from '@/components/ui/BulkOperations';
 import { useApiRequest } from '@/lib/hooks/useApiRequest';
 import type { FAQ } from '@/types/database';
 import { FAQForm } from './FAQForm';
@@ -38,7 +39,7 @@ export default function FAQsPage() {
   const [originalFaqs, setOriginalFaqs] = useState<FAQ[]>([]);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [editingFAQ, setEditingFAQ] = useState<FAQ | null>(null);
-  const [selectedFAQs, setSelectedFAQs] = useState<string[]>([]);
+  const [selectedFAQs, setSelectedFAQs] = useState<FAQDisplayData[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('');
   const [categories, setCategories] = useState<string[]>([]);
@@ -98,61 +99,93 @@ export default function FAQsPage() {
     loadFAQs(); // Reload FAQs
   };
 
-  const handleSelectFAQ = (id: string, checked: boolean) => {
-    if (checked) {
-      setSelectedFAQs(prev => [...prev, id]);
-    } else {
-      setSelectedFAQs(prev => prev.filter(faqId => faqId !== id));
-    }
+  const handleSelectionChange = (faqs: FAQDisplayData[]) => {
+    setSelectedFAQs(faqs);
   };
 
-  const handleSelectAll = (checked: boolean) => {
-    if (checked) {
-      setSelectedFAQs(faqs.map(faq => faq.id));
-    } else {
-      setSelectedFAQs([]);
-    }
+  const handleClearSelection = () => {
+    setSelectedFAQs([]);
   };
 
-  const handleBulkDelete = async () => {
-    if (!selectedFAQs.length) return;
+  // Bulk operations
+  const handleBulkActivate = async (faqs: FAQDisplayData[], value?: string) => {
+    const activate = value === 'true';
+    const results = { total: faqs.length, successful: 0, failed: 0, errors: [] as any[] };
 
-    if (!confirm(`Are you sure you want to delete ${selectedFAQs.length} FAQ(s)?`)) return;
+    for (const faq of faqs) {
+      try {
+        const response = await fetch(`/api/faqs/${faq.id}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ is_active: activate })
+        });
 
-    try {
-      await Promise.all(
-        selectedFAQs.map(id =>
-          fetch(`/api/faqs/${id}`, { method: 'DELETE' })
-        )
-      );
-      setSelectedFAQs([]);
+        if (response.ok) {
+          results.successful++;
+        } else {
+          results.failed++;
+          results.errors.push({ id: faq.id, error: 'Failed to update status' });
+        }
+      } catch (error) {
+        results.failed++;
+        results.errors.push({ id: faq.id, error: 'Network error' });
+      }
+    }
+
+    if (results.successful > 0) {
       loadFAQs();
-    } catch (error) {
-      console.error('Error deleting FAQs:', error);
-      alert('Error deleting FAQs');
     }
+
+    return results;
   };
 
-  const handleBulkActivate = async (activate: boolean) => {
-    if (!selectedFAQs.length) return;
+  const handleBulkDelete = async (faqs: FAQDisplayData[], value?: string) => {
+    const results = { total: faqs.length, successful: 0, failed: 0, errors: [] as any[] };
 
-    try {
-      await Promise.all(
-        selectedFAQs.map(id =>
-          fetch(`/api/faqs/${id}`, {
-            method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ is_active: activate })
-          })
-        )
-      );
-      setSelectedFAQs([]);
+    for (const faq of faqs) {
+      try {
+        const response = await fetch(`/api/faqs/${faq.id}`, {
+          method: 'DELETE'
+        });
+
+        if (response.ok) {
+          results.successful++;
+        } else {
+          results.failed++;
+          results.errors.push({ id: faq.id, error: 'Failed to delete FAQ' });
+        }
+      } catch (error) {
+        results.failed++;
+        results.errors.push({ id: faq.id, error: 'Network error' });
+      }
+    }
+
+    if (results.successful > 0) {
       loadFAQs();
-    } catch (error) {
-      console.error('Error updating FAQs:', error);
-      alert('Error updating FAQs');
     }
+
+    return results;
   };
+
+  const bulkActions = [
+    {
+      key: 'status',
+      label: 'Status',
+      type: 'status' as const,
+      options: [
+        { value: 'true', label: 'Activate' },
+        { value: 'false', label: 'Deactivate' }
+      ],
+      handler: handleBulkActivate,
+    },
+    {
+      key: 'delete',
+      label: 'Delete',
+      type: 'delete' as const,
+      handler: handleBulkDelete,
+      confirmMessage: (count: number) => `Are you sure you want to delete ${count} FAQ${count !== 1 ? 's' : ''}? This action cannot be undone.`,
+    },
+  ];
 
   const columns: Column<FAQDisplayData>[] = [
     {
@@ -245,20 +278,11 @@ export default function FAQsPage() {
         </div>
       </div>
 
-      {/* Bulk Actions */}
-      {selectedFAQs.length > 0 && (
-        <div className="flex gap-2 mb-4">
-          <Button variant="outline" onClick={() => handleBulkActivate(true)}>
-            Activate Selected ({selectedFAQs.length})
-          </Button>
-          <Button variant="outline" onClick={() => handleBulkActivate(false)}>
-            Deactivate Selected ({selectedFAQs.length})
-          </Button>
-          <Button variant="secondary" onClick={handleBulkDelete}>
-            Delete Selected ({selectedFAQs.length})
-          </Button>
-        </div>
-      )}
+      <BulkOperations
+        selectedItems={selectedFAQs}
+        onClearSelection={handleClearSelection}
+        availableActions={bulkActions}
+      />
 
       <div className="border rounded-lg">
         <table className="w-full">
@@ -268,7 +292,13 @@ export default function FAQsPage() {
                 <input
                   type="checkbox"
                   checked={selectedFAQs.length === faqs.length && faqs.length > 0}
-                  onChange={(e) => handleSelectAll(e.target.checked)}
+                  onChange={(e) => {
+                    if (e.target.checked) {
+                      setSelectedFAQs(faqs);
+                    } else {
+                      setSelectedFAQs([]);
+                    }
+                  }}
                 />
               </th>
               {columns.map((column) => (
@@ -285,8 +315,14 @@ export default function FAQsPage() {
                 <td className="p-4">
                   <input
                     type="checkbox"
-                    checked={selectedFAQs.includes(faq.id)}
-                    onChange={(e) => handleSelectFAQ(faq.id, e.target.checked)}
+                    checked={selectedFAQs.includes(faq)}
+                    onChange={(e) => {
+                      if (e.target.checked) {
+                        setSelectedFAQs(prev => [...prev, faq]);
+                      } else {
+                        setSelectedFAQs(prev => prev.filter(f => f !== faq));
+                      }
+                    }}
                   />
                 </td>
                 {columns.map((column) => (

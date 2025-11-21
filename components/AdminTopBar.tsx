@@ -4,6 +4,7 @@ import { useRouter } from 'next/navigation';
 import { auth } from '@/lib/auth';
 import { useAuth } from '@/lib/hooks/useAuth';
 import { Button } from './ui/Button';
+import { GlobalSearch } from './GlobalSearch';
 
 interface AdminTopBarProps {
   onToggleSidebar: () => void;
@@ -32,6 +33,7 @@ export function AdminTopBar({ onToggleSidebar }: AdminTopBarProps) {
         <h1 className="text-lg md:text-xl font-semibold text-primary">The Fringe Admin</h1>
       </div>
       <div className="flex flex-col md:flex-row md:items-center gap-2 md:gap-4">
+        <GlobalSearch />
         <div className="text-primary text-sm md:text-base">
           <span>
             Welcome, {adminUser?.email || 'Admin User'} ({adminUser?.role || 'Unknown'})

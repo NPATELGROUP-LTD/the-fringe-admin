@@ -6,6 +6,7 @@ import { Modal, ModalHeader, ModalBody } from '@/components/ui/Modal';
 import { Input } from '@/components/ui/Input';
 import { Select } from '@/components/ui/Select';
 import { Label } from '@/components/ui/Label';
+import { BulkOperations } from '@/components/ui/BulkOperations';
 import { useApiRequest } from '@/lib/hooks/useApiRequest';
 import type { Review } from '@/types/database';
 import { ReviewForm } from './ReviewForm';
@@ -41,7 +42,7 @@ export default function ReviewsPage() {
   const [originalReviews, setOriginalReviews] = useState<Review[]>([]);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [viewingReview, setViewingReview] = useState<Review | null>(null);
-  const [selectedReviews, setSelectedReviews] = useState<string[]>([]);
+  const [selectedReviews, setSelectedReviews] = useState<ReviewDisplayData[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [approvalFilter, setApprovalFilter] = useState('');
   const [ratingFilter, setRatingFilter] = useState('');
@@ -98,61 +99,93 @@ export default function ReviewsPage() {
     loadReviews(); // Reload reviews
   };
 
-  const handleSelectReview = (id: string, checked: boolean) => {
-    if (checked) {
-      setSelectedReviews(prev => [...prev, id]);
-    } else {
-      setSelectedReviews(prev => prev.filter(reviewId => reviewId !== id));
-    }
+  const handleSelectionChange = (reviews: ReviewDisplayData[]) => {
+    setSelectedReviews(reviews);
   };
 
-  const handleSelectAll = (checked: boolean) => {
-    if (checked) {
-      setSelectedReviews(reviews.map(review => review.id));
-    } else {
-      setSelectedReviews([]);
-    }
+  const handleClearSelection = () => {
+    setSelectedReviews([]);
   };
 
-  const handleBulkApprove = async (approve: boolean) => {
-    if (!selectedReviews.length) return;
+  // Bulk operations
+  const handleBulkApprove = async (reviews: ReviewDisplayData[], value?: string) => {
+    const approve = value === 'true';
+    const results = { total: reviews.length, successful: 0, failed: 0, errors: [] as any[] };
 
-    try {
-      await Promise.all(
-        selectedReviews.map(id =>
-          fetch(`/api/reviews/${id}`, {
-            method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ is_approved: approve })
-          })
-        )
-      );
-      setSelectedReviews([]);
+    for (const review of reviews) {
+      try {
+        const response = await fetch(`/api/reviews/${review.id}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ is_approved: approve })
+        });
+
+        if (response.ok) {
+          results.successful++;
+        } else {
+          results.failed++;
+          results.errors.push({ id: review.id, error: 'Failed to update approval status' });
+        }
+      } catch (error) {
+        results.failed++;
+        results.errors.push({ id: review.id, error: 'Network error' });
+      }
+    }
+
+    if (results.successful > 0) {
       loadReviews();
-    } catch (error) {
-      console.error('Error updating reviews:', error);
-      alert('Error updating reviews');
     }
+
+    return results;
   };
 
-  const handleBulkDelete = async () => {
-    if (!selectedReviews.length) return;
+  const handleBulkDelete = async (reviews: ReviewDisplayData[], value?: string) => {
+    const results = { total: reviews.length, successful: 0, failed: 0, errors: [] as any[] };
 
-    if (!confirm(`Are you sure you want to delete ${selectedReviews.length} review(s)?`)) return;
+    for (const review of reviews) {
+      try {
+        const response = await fetch(`/api/reviews/${review.id}`, {
+          method: 'DELETE'
+        });
 
-    try {
-      await Promise.all(
-        selectedReviews.map(id =>
-          fetch(`/api/reviews/${id}`, { method: 'DELETE' })
-        )
-      );
-      setSelectedReviews([]);
+        if (response.ok) {
+          results.successful++;
+        } else {
+          results.failed++;
+          results.errors.push({ id: review.id, error: 'Failed to delete review' });
+        }
+      } catch (error) {
+        results.failed++;
+        results.errors.push({ id: review.id, error: 'Network error' });
+      }
+    }
+
+    if (results.successful > 0) {
       loadReviews();
-    } catch (error) {
-      console.error('Error deleting reviews:', error);
-      alert('Error deleting reviews');
     }
+
+    return results;
   };
+
+  const bulkActions = [
+    {
+      key: 'approve',
+      label: 'Approval',
+      type: 'status' as const,
+      options: [
+        { value: 'true', label: 'Approve' },
+        { value: 'false', label: 'Reject' }
+      ],
+      handler: handleBulkApprove,
+    },
+    {
+      key: 'delete',
+      label: 'Delete',
+      type: 'delete' as const,
+      handler: handleBulkDelete,
+      confirmMessage: (count: number) => `Are you sure you want to delete ${count} review${count !== 1 ? 's' : ''}? This action cannot be undone.`,
+    },
+  ];
 
   const handleExport = async () => {
     try {
@@ -279,20 +312,11 @@ export default function ReviewsPage() {
         </div>
       </div>
 
-      {/* Bulk Actions */}
-      {selectedReviews.length > 0 && (
-        <div className="flex gap-2 mb-4">
-          <Button variant="outline" onClick={() => handleBulkApprove(true)}>
-            Approve ({selectedReviews.length})
-          </Button>
-          <Button variant="outline" onClick={() => handleBulkApprove(false)}>
-            Reject ({selectedReviews.length})
-          </Button>
-          <Button variant="secondary" onClick={handleBulkDelete}>
-            Delete Selected ({selectedReviews.length})
-          </Button>
-        </div>
-      )}
+      <BulkOperations
+        selectedItems={selectedReviews}
+        onClearSelection={handleClearSelection}
+        availableActions={bulkActions}
+      />
 
       <div className="border rounded-lg overflow-x-auto">
         <table className="w-full min-w-[800px]">
@@ -302,7 +326,13 @@ export default function ReviewsPage() {
                 <input
                   type="checkbox"
                   checked={selectedReviews.length === reviews.length && reviews.length > 0}
-                  onChange={(e) => handleSelectAll(e.target.checked)}
+                  onChange={(e) => {
+                    if (e.target.checked) {
+                      setSelectedReviews(reviews);
+                    } else {
+                      setSelectedReviews([]);
+                    }
+                  }}
                 />
               </th>
               <th className="p-4 text-left font-medium">Name</th>
@@ -323,8 +353,14 @@ export default function ReviewsPage() {
                 <td className="p-4">
                   <input
                     type="checkbox"
-                    checked={selectedReviews.includes(review.id)}
-                    onChange={(e) => handleSelectReview(review.id, e.target.checked)}
+                    checked={selectedReviews.includes(review)}
+                    onChange={(e) => {
+                      if (e.target.checked) {
+                        setSelectedReviews(prev => [...prev, review]);
+                      } else {
+                        setSelectedReviews(prev => prev.filter(r => r !== review));
+                      }
+                    }}
                   />
                 </td>
                 <td className="p-4">{review.name}</td>

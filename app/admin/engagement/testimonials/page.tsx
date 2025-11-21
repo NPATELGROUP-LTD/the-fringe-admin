@@ -6,6 +6,7 @@ import { Modal, ModalHeader, ModalBody } from '@/components/ui/Modal';
 import { Input } from '@/components/ui/Input';
 import { Select } from '@/components/ui/Select';
 import { Label } from '@/components/ui/Label';
+import { BulkOperations } from '@/components/ui/BulkOperations';
 import { useApiRequest } from '@/lib/hooks/useApiRequest';
 import type { Testimonial } from '@/types/database';
 import { TestimonialForm } from './TestimonialForm';
@@ -41,7 +42,7 @@ export default function TestimonialsPage() {
   const [originalTestimonials, setOriginalTestimonials] = useState<Testimonial[]>([]);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [viewingTestimonial, setViewingTestimonial] = useState<Testimonial | null>(null);
-  const [selectedTestimonials, setSelectedTestimonials] = useState<string[]>([]);
+  const [selectedTestimonials, setSelectedTestimonials] = useState<TestimonialDisplayData[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [approvalFilter, setApprovalFilter] = useState('');
   const [featuredFilter, setFeaturedFilter] = useState('');
@@ -100,82 +101,134 @@ export default function TestimonialsPage() {
     loadTestimonials(); // Reload testimonials
   };
 
-  const handleSelectTestimonial = (id: string, checked: boolean) => {
-    if (checked) {
-      setSelectedTestimonials(prev => [...prev, id]);
-    } else {
-      setSelectedTestimonials(prev => prev.filter(testimonialId => testimonialId !== id));
-    }
+  const handleSelectionChange = (testimonials: TestimonialDisplayData[]) => {
+    setSelectedTestimonials(testimonials);
   };
 
-  const handleSelectAll = (checked: boolean) => {
-    if (checked) {
-      setSelectedTestimonials(testimonials.map(testimonial => testimonial.id));
-    } else {
-      setSelectedTestimonials([]);
-    }
+  const handleClearSelection = () => {
+    setSelectedTestimonials([]);
   };
 
-  const handleBulkApprove = async (approve: boolean) => {
-    if (!selectedTestimonials.length) return;
+  // Bulk operations
+  const handleBulkApprove = async (testimonials: TestimonialDisplayData[], value?: string) => {
+    const approve = value === 'true';
+    const results = { total: testimonials.length, successful: 0, failed: 0, errors: [] as any[] };
 
-    try {
-      await Promise.all(
-        selectedTestimonials.map(id =>
-          fetch(`/api/testimonials/${id}`, {
-            method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ is_approved: approve })
-          })
-        )
-      );
-      setSelectedTestimonials([]);
+    for (const testimonial of testimonials) {
+      try {
+        const response = await fetch(`/api/testimonials/${testimonial.id}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ is_approved: approve })
+        });
+
+        if (response.ok) {
+          results.successful++;
+        } else {
+          results.failed++;
+          results.errors.push({ id: testimonial.id, error: 'Failed to update approval status' });
+        }
+      } catch (error) {
+        results.failed++;
+        results.errors.push({ id: testimonial.id, error: 'Network error' });
+      }
+    }
+
+    if (results.successful > 0) {
       loadTestimonials();
-    } catch (error) {
-      console.error('Error updating testimonials:', error);
-      alert('Error updating testimonials');
     }
+
+    return results;
   };
 
-  const handleBulkFeature = async (feature: boolean) => {
-    if (!selectedTestimonials.length) return;
+  const handleBulkFeature = async (testimonials: TestimonialDisplayData[], value?: string) => {
+    const feature = value === 'true';
+    const results = { total: testimonials.length, successful: 0, failed: 0, errors: [] as any[] };
 
-    try {
-      await Promise.all(
-        selectedTestimonials.map(id =>
-          fetch(`/api/testimonials/${id}`, {
-            method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ is_featured: feature })
-          })
-        )
-      );
-      setSelectedTestimonials([]);
+    for (const testimonial of testimonials) {
+      try {
+        const response = await fetch(`/api/testimonials/${testimonial.id}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ is_featured: feature })
+        });
+
+        if (response.ok) {
+          results.successful++;
+        } else {
+          results.failed++;
+          results.errors.push({ id: testimonial.id, error: 'Failed to update featured status' });
+        }
+      } catch (error) {
+        results.failed++;
+        results.errors.push({ id: testimonial.id, error: 'Network error' });
+      }
+    }
+
+    if (results.successful > 0) {
       loadTestimonials();
-    } catch (error) {
-      console.error('Error updating testimonials:', error);
-      alert('Error updating testimonials');
     }
+
+    return results;
   };
 
-  const handleBulkDelete = async () => {
-    if (!selectedTestimonials.length) return;
+  const handleBulkDelete = async (testimonials: TestimonialDisplayData[], value?: string) => {
+    const results = { total: testimonials.length, successful: 0, failed: 0, errors: [] as any[] };
 
-    if (!confirm(`Are you sure you want to delete ${selectedTestimonials.length} testimonial(s)?`)) return;
+    for (const testimonial of testimonials) {
+      try {
+        const response = await fetch(`/api/testimonials/${testimonial.id}`, {
+          method: 'DELETE'
+        });
 
-    try {
-      await Promise.all(
-        selectedTestimonials.map(id =>
-          fetch(`/api/testimonials/${id}`, { method: 'DELETE' })
-        )
-      );
-      setSelectedTestimonials([]);
+        if (response.ok) {
+          results.successful++;
+        } else {
+          results.failed++;
+          results.errors.push({ id: testimonial.id, error: 'Failed to delete testimonial' });
+        }
+      } catch (error) {
+        results.failed++;
+        results.errors.push({ id: testimonial.id, error: 'Network error' });
+      }
+    }
+
+    if (results.successful > 0) {
       loadTestimonials();
-    } catch (error) {
-      console.error('Error deleting testimonials:', error);
-      alert('Error deleting testimonials');
     }
+
+    return results;
   };
+
+  const bulkActions = [
+    {
+      key: 'approve',
+      label: 'Approval',
+      type: 'status' as const,
+      options: [
+        { value: 'true', label: 'Approve' },
+        { value: 'false', label: 'Reject' }
+      ],
+      handler: handleBulkApprove,
+    },
+    {
+      key: 'feature',
+      label: 'Featured',
+      type: 'status' as const,
+      options: [
+        { value: 'true', label: 'Feature' },
+        { value: 'false', label: 'Unfeature' }
+      ],
+      handler: handleBulkFeature,
+    },
+    {
+      key: 'delete',
+      label: 'Delete',
+      type: 'delete' as const,
+      handler: handleBulkDelete,
+      confirmMessage: (count: number) => `Are you sure you want to delete ${count} testimonial${count !== 1 ? 's' : ''}? This action cannot be undone.`,
+    },
+  ];
 
   const handleExport = async () => {
     try {
@@ -353,26 +406,11 @@ export default function TestimonialsPage() {
         </div>
       </div>
 
-      {/* Bulk Actions */}
-      {selectedTestimonials.length > 0 && (
-        <div className="flex flex-wrap gap-2 mb-4">
-          <Button variant="outline" onClick={() => handleBulkApprove(true)}>
-            Approve ({selectedTestimonials.length})
-          </Button>
-          <Button variant="outline" onClick={() => handleBulkApprove(false)}>
-            Reject ({selectedTestimonials.length})
-          </Button>
-          <Button variant="outline" onClick={() => handleBulkFeature(true)}>
-            Feature ({selectedTestimonials.length})
-          </Button>
-          <Button variant="outline" onClick={() => handleBulkFeature(false)}>
-            Unfeature ({selectedTestimonials.length})
-          </Button>
-          <Button variant="secondary" onClick={handleBulkDelete}>
-            Delete Selected ({selectedTestimonials.length})
-          </Button>
-        </div>
-      )}
+      <BulkOperations
+        selectedItems={selectedTestimonials}
+        onClearSelection={handleClearSelection}
+        availableActions={bulkActions}
+      />
 
       <div className="border rounded-lg overflow-x-auto">
         <table className="w-full min-w-[800px]">
@@ -382,7 +420,13 @@ export default function TestimonialsPage() {
                 <input
                   type="checkbox"
                   checked={selectedTestimonials.length === testimonials.length && testimonials.length > 0}
-                  onChange={(e) => handleSelectAll(e.target.checked)}
+                  onChange={(e) => {
+                    if (e.target.checked) {
+                      setSelectedTestimonials(testimonials);
+                    } else {
+                      setSelectedTestimonials([]);
+                    }
+                  }}
                 />
               </th>
               <th className="p-4 text-left font-medium">Name</th>
@@ -402,8 +446,14 @@ export default function TestimonialsPage() {
                 <td className="p-4">
                   <input
                     type="checkbox"
-                    checked={selectedTestimonials.includes(testimonial.id)}
-                    onChange={(e) => handleSelectTestimonial(testimonial.id, e.target.checked)}
+                    checked={selectedTestimonials.includes(testimonial)}
+                    onChange={(e) => {
+                      if (e.target.checked) {
+                        setSelectedTestimonials(prev => [...prev, testimonial]);
+                      } else {
+                        setSelectedTestimonials(prev => prev.filter(t => t !== testimonial));
+                      }
+                    }}
                   />
                 </td>
                 <td className="p-4">{testimonial.name}</td>
