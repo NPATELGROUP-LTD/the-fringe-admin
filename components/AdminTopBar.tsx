@@ -1,10 +1,19 @@
 'use client';
 
+import { useRouter } from 'next/navigation';
+import { auth } from '@/lib/auth';
+
 interface AdminTopBarProps {
   onToggleSidebar: () => void;
 }
 
 export function AdminTopBar({ onToggleSidebar }: AdminTopBarProps) {
+  const router = useRouter();
+
+  const handleLogout = async () => {
+    await auth.signOut();
+    router.push('/admin/login');
+  };
   return (
     <header className="bg-secondary border-b border-theme px-4 py-3 flex flex-col md:flex-row md:items-center md:justify-between gap-2 md:gap-0">
       <div className="flex items-center">
@@ -21,7 +30,10 @@ export function AdminTopBar({ onToggleSidebar }: AdminTopBarProps) {
         <div className="text-primary text-sm md:text-base">
           <span>Welcome, Admin User</span>
         </div>
-        <button className="px-4 py-2 bg-primary text-secondary hover:bg-secondary hover:text-primary border border-theme transition-colors min-h-[44px] flex items-center justify-center">
+        <button
+          onClick={handleLogout}
+          className="px-4 py-2 bg-primary text-secondary hover:bg-secondary hover:text-primary border border-theme transition-colors min-h-[44px] flex items-center justify-center"
+        >
           Logout
         </button>
       </div>
