@@ -149,47 +149,24 @@ export default function ContactsPage() {
     }
   };
 
-  const handleExport = async () => {
+  const handleExport = async (format: 'csv' | 'xls' = 'csv') => {
     try {
-      // Fetch all contacts for export (remove pagination limit)
       const params = new URLSearchParams();
-      if (searchTerm) params.append('search', searchTerm);
+      params.append('format', format);
       if (readFilter) params.append('is_read', readFilter);
-      params.append('limit', '10000'); // Large limit to get all
 
-      const response = await fetch(`/api/contacts?${params.toString()}`);
-      if (!response.ok) throw new Error('Failed to fetch contacts');
+      const response = await fetch(`/api/contacts/export?${params.toString()}`);
+      if (!response.ok) throw new Error('Failed to export contacts');
 
-      const data = await response.json();
-      const contacts = data.data || [];
-
-      // Convert to CSV
-      const headers = ['Name', 'Email', 'Phone', 'Subject', 'Message', 'Read', 'Responded', 'Response', 'Created At'];
-      const csvContent = [
-        headers.join(','),
-        ...contacts.map((contact: ContactSubmission) => [
-          `"${contact.name.replace(/"/g, '""')}"`,
-          `"${contact.email.replace(/"/g, '""')}"`,
-          `"${(contact.phone || '').replace(/"/g, '""')}"`,
-          `"${contact.subject.replace(/"/g, '""')}"`,
-          `"${contact.message.replace(/"/g, '""').replace(/\n/g, ' ')}"`,
-          contact.is_read ? 'Yes' : 'No',
-          contact.responded_at ? 'Yes' : 'No',
-          `"${(contact.response || '').replace(/"/g, '""').replace(/\n/g, ' ')}"`,
-          new Date(contact.created_at).toLocaleString(),
-        ].join(','))
-      ].join('\n');
-
-      // Download CSV
-      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-      const link = document.createElement('a');
+      const blob = await response.blob();
       const url = URL.createObjectURL(blob);
-      link.setAttribute('href', url);
-      link.setAttribute('download', `contact_submissions_${new Date().toISOString().split('T')[0]}.csv`);
-      link.style.visibility = 'hidden';
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `contact_submissions_${new Date().toISOString().split('T')[0]}.${format === 'xls' ? 'xls' : 'csv'}`;
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
+      URL.revokeObjectURL(url);
     } catch (error) {
       console.error('Error exporting contacts:', error);
       alert('Error exporting contacts');
@@ -265,8 +242,11 @@ export default function ContactsPage() {
           <p className="text-primary text-sm md:text-base">Manage customer inquiries and messages</p>
         </div>
         <div className="flex gap-2">
-          <Button variant="outline" onClick={handleExport}>
-            Export
+          <Button variant="outline" onClick={() => handleExport('csv')}>
+            Export CSV
+          </Button>
+          <Button variant="outline" onClick={() => handleExport('xls')}>
+            Export Excel
           </Button>
           <Button onClick={() => setIsCreateModalOpen(true)}>
             Add Contact

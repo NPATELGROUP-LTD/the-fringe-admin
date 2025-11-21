@@ -144,46 +144,24 @@ export default function NewsletterPage() {
     }
   };
 
-  const handleExport = async () => {
+  const handleExport = async (format: 'csv' | 'xls' = 'csv') => {
     try {
-      // Fetch all subscriptions for export (remove pagination limit)
       const params = new URLSearchParams();
-      if (searchTerm) params.append('search', searchTerm);
+      params.append('format', format);
       if (statusFilter) params.append('status', statusFilter);
-      params.append('limit', '10000'); // Large limit to get all
 
-      const response = await fetch(`/api/newsletter?${params.toString()}`);
-      if (!response.ok) throw new Error('Failed to fetch subscriptions');
+      const response = await fetch(`/api/newsletter/export?${params.toString()}`);
+      if (!response.ok) throw new Error('Failed to export subscriptions');
 
-      const data = await response.json();
-      const subscriptions = data.data || [];
-
-      // Convert to CSV
-      const headers = ['Email', 'First Name', 'Last Name', 'Status', 'Interests', 'Subscribed At', 'Unsubscribed At', 'Created At'];
-      const csvContent = [
-        headers.join(','),
-        ...subscriptions.map((sub: NewsletterSubscription) => [
-          `"${sub.email.replace(/"/g, '""')}"`,
-          `"${(sub.first_name || '').replace(/"/g, '""')}"`,
-          `"${(sub.last_name || '').replace(/"/g, '""')}"`,
-          sub.status,
-          `"${(sub.interests?.join(', ') || '').replace(/"/g, '""')}"`,
-          new Date(sub.subscribed_at).toLocaleString(),
-          sub.unsubscribed_at ? new Date(sub.unsubscribed_at).toLocaleString() : '',
-          new Date(sub.created_at).toLocaleString(),
-        ].join(','))
-      ].join('\n');
-
-      // Download CSV
-      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-      const link = document.createElement('a');
+      const blob = await response.blob();
       const url = URL.createObjectURL(blob);
-      link.setAttribute('href', url);
-      link.setAttribute('download', `newsletter_subscriptions_${new Date().toISOString().split('T')[0]}.csv`);
-      link.style.visibility = 'hidden';
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `newsletter_subscribers_${new Date().toISOString().split('T')[0]}.${format === 'xls' ? 'xls' : 'csv'}`;
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
+      URL.revokeObjectURL(url);
     } catch (error) {
       console.error('Error exporting subscriptions:', error);
       alert('Error exporting subscriptions');
@@ -216,8 +194,11 @@ export default function NewsletterPage() {
           <p className="text-primary text-sm md:text-base">Manage newsletter subscribers and their preferences</p>
         </div>
         <div className="flex gap-2">
-          <Button variant="outline" onClick={handleExport}>
-            Export
+          <Button variant="outline" onClick={() => handleExport('csv')}>
+            Export CSV
+          </Button>
+          <Button variant="outline" onClick={() => handleExport('xls')}>
+            Export Excel
           </Button>
           <Button onClick={() => setIsCreateModalOpen(true)}>
             Add Subscriber
