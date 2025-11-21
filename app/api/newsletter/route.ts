@@ -29,6 +29,9 @@ export async function GET(request: NextRequest) {
     const limit = parseInt(searchParams.get('limit') || '10');
     const search = searchParams.get('search');
     const status = searchParams.get('status');
+    const interest = searchParams.get('interest');
+    const dateFrom = searchParams.get('date_from');
+    const dateTo = searchParams.get('date_to');
     const sortBy = searchParams.get('sort_by') || 'created_at';
     const sortOrder = searchParams.get('sort_order') || 'desc';
 
@@ -45,6 +48,18 @@ export async function GET(request: NextRequest) {
 
     if (status) {
       query = query.eq('status', status);
+    }
+
+    if (interest) {
+      query = query.contains('interests', [interest]);
+    }
+
+    if (dateFrom) {
+      query = query.gte('subscribed_at', dateFrom);
+    }
+
+    if (dateTo) {
+      query = query.lte('subscribed_at', dateTo + 'T23:59:59.999Z'); // Include the entire day
     }
 
     // Apply pagination
@@ -67,6 +82,18 @@ export async function GET(request: NextRequest) {
 
     if (status) {
       countQuery = countQuery.eq('status', status);
+    }
+
+    if (interest) {
+      countQuery = countQuery.contains('interests', [interest]);
+    }
+
+    if (dateFrom) {
+      countQuery = countQuery.gte('subscribed_at', dateFrom);
+    }
+
+    if (dateTo) {
+      countQuery = countQuery.lte('subscribed_at', dateTo + 'T23:59:59.999Z');
     }
 
     const { count, error: countError } = await countQuery;

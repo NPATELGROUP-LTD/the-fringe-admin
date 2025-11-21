@@ -218,6 +218,88 @@ export interface Statistic {
   updated_at: Timestamp;
 }
 
+// Email Management Tables
+export interface EmailTemplate {
+  id: UUID;
+  name: string;
+  subject: string;
+  content: string;
+  category: string;
+  variables: string[];
+  is_active: boolean;
+  created_at: Timestamp;
+  updated_at: Timestamp;
+}
+
+export interface EmailSmtpSettings {
+  id: UUID;
+  host: string;
+  port: number;
+  username?: string;
+  password?: string;
+  encryption: 'none' | 'ssl' | 'tls';
+  from_email: string;
+  from_name?: string;
+  is_active: boolean;
+  created_at: Timestamp;
+  updated_at: Timestamp;
+}
+
+export interface EmailTrigger {
+  id: UUID;
+  name: string;
+  event_type: string;
+  template_id?: UUID;
+  conditions: Record<string, any>;
+  is_active: boolean;
+  created_at: Timestamp;
+  updated_at: Timestamp;
+}
+
+export interface EmailCampaign {
+  id: UUID;
+  name: string;
+  subject: string;
+  content: string;
+  template_id?: UUID;
+  segment_filters: Record<string, any>;
+  status: 'draft' | 'scheduled' | 'sending' | 'sent' | 'paused' | 'cancelled';
+  scheduled_at?: Timestamp;
+  sent_at?: Timestamp;
+  total_recipients: number;
+  sent_count: number;
+  opened_count: number;
+  clicked_count: number;
+  bounced_count: number;
+  unsubscribed_count: number;
+  created_by?: UUID;
+  created_at: Timestamp;
+  updated_at: Timestamp;
+}
+
+export interface EmailCampaignSend {
+  id: UUID;
+  campaign_id: UUID;
+  subscriber_id: UUID;
+  sent_at: Timestamp;
+  opened_at?: Timestamp;
+  clicked_at?: Timestamp;
+  bounced_at?: Timestamp;
+  unsubscribed_at?: Timestamp;
+  status: 'sent' | 'delivered' | 'opened' | 'clicked' | 'bounced' | 'unsubscribed';
+  created_at: Timestamp;
+}
+
+export interface EmailCampaignAnalytics {
+  id: UUID;
+  campaign_id: UUID;
+  metric: string;
+  value: number;
+  period_start: Timestamp;
+  period_end: Timestamp;
+  created_at: Timestamp;
+}
+
 // Database Response Types
 export interface DatabaseResponse<T> {
   data: T | null;
@@ -260,4 +342,10 @@ export type TableName =
   | 'faqs'
   | 'business_info'
   | 'site_settings'
-  | 'statistics';
+  | 'statistics'
+  | 'email_templates'
+  | 'email_smtp_settings'
+  | 'email_triggers'
+  | 'email_campaigns'
+  | 'email_campaign_sends'
+  | 'email_campaign_analytics';

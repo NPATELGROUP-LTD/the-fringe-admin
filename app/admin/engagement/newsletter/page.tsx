@@ -9,6 +9,8 @@ import { Modal, ModalHeader, ModalBody } from '@/components/ui/Modal';
 import { useApiRequest } from '@/lib/hooks/useApiRequest';
 import type { NewsletterSubscription } from '@/types/database';
 import { NewsletterForm } from './NewsletterForm';
+import { BulkEmailModal } from './BulkEmailModal';
+import { ImportModal } from './ImportModal';
 
 interface NewsletterDisplayData {
   id: string;
@@ -40,6 +42,11 @@ export default function NewsletterPage() {
   const [selectedSubscriptions, setSelectedSubscriptions] = useState<string[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
+  const [interestFilter, setInterestFilter] = useState('');
+  const [dateFromFilter, setDateFromFilter] = useState('');
+  const [dateToFilter, setDateToFilter] = useState('');
+  const [isBulkEmailModalOpen, setIsBulkEmailModalOpen] = useState(false);
+  const [isImportModalOpen, setIsImportModalOpen] = useState(false);
 
   const { data, loading, error, request } = useApiRequest<NewsletterResponse>();
 
@@ -48,13 +55,16 @@ export default function NewsletterPage() {
     const params = new URLSearchParams();
     if (searchTerm) params.append('search', searchTerm);
     if (statusFilter) params.append('status', statusFilter);
+    if (interestFilter) params.append('interest', interestFilter);
+    if (dateFromFilter) params.append('date_from', dateFromFilter);
+    if (dateToFilter) params.append('date_to', dateToFilter);
 
     await request(`/api/newsletter?${params.toString()}`);
   };
 
   useEffect(() => {
     loadSubscriptions();
-  }, [searchTerm, statusFilter]);
+  }, [searchTerm, statusFilter, interestFilter, dateFromFilter, dateToFilter]);
 
   useEffect(() => {
     if (data?.data) {
@@ -86,6 +96,16 @@ export default function NewsletterPage() {
   const handleSubscriptionSaved = () => {
     handleCloseModal();
     loadSubscriptions(); // Reload subscriptions
+  };
+
+  const handleBulkEmailSent = () => {
+    setSelectedSubscriptions([]); // Clear selection after sending
+    setIsBulkEmailModalOpen(false);
+  };
+
+  const handleImportComplete = () => {
+    loadSubscriptions(); // Reload subscriptions after import
+    setIsImportModalOpen(false);
   };
 
   const handleSelectSubscription = (id: string, checked: boolean) => {
@@ -194,6 +214,9 @@ export default function NewsletterPage() {
           <p className="text-primary text-sm md:text-base">Manage newsletter subscribers and their preferences</p>
         </div>
         <div className="flex gap-2">
+          <Button variant="outline" onClick={() => setIsImportModalOpen(true)}>
+            Import CSV
+          </Button>
           <Button variant="outline" onClick={() => handleExport('csv')}>
             Export CSV
           </Button>
@@ -207,34 +230,86 @@ export default function NewsletterPage() {
       </div>
 
       {/* Filters */}
-      <div className="flex flex-col sm:flex-row gap-4 mb-6">
-        <div className="flex-1">
-          <Label htmlFor="search">Search</Label>
-          <Input
-            id="search"
-            placeholder="Search email, name..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-          />
+      <div className="bg-gray-50 p-4 rounded-lg mb-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
+          <div>
+            <Label htmlFor="search">Search</Label>
+            <Input
+              id="search"
+              placeholder="Email, first name, last name..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+            />
+          </div>
+          <div>
+            <Label htmlFor="statusFilter">Status</Label>
+            <Select
+              id="statusFilter"
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value)}
+            >
+              <option value="">All Statuses</option>
+              <option value="pending">Pending</option>
+              <option value="subscribed">Subscribed</option>
+              <option value="unsubscribed">Unsubscribed</option>
+            </Select>
+          </div>
+          <div>
+            <Label htmlFor="interestFilter">Interest</Label>
+            <Input
+              id="interestFilter"
+              placeholder="Filter by interest..."
+              value={interestFilter}
+              onChange={(e) => setInterestFilter(e.target.value)}
+            />
+          </div>
+          <div>
+            <Label htmlFor="dateFromFilter">Subscribed From</Label>
+            <Input
+              id="dateFromFilter"
+              type="date"
+              value={dateFromFilter}
+              onChange={(e) => setDateFromFilter(e.target.value)}
+            />
+          </div>
+          <div>
+            <Label htmlFor="dateToFilter">Subscribed To</Label>
+            <Input
+              id="dateToFilter"
+              type="date"
+              value={dateToFilter}
+              onChange={(e) => setDateToFilter(e.target.value)}
+            />
+          </div>
         </div>
-        <div className="sm:w-48">
-          <Label htmlFor="statusFilter">Status</Label>
-          <Select
-            id="statusFilter"
-            value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value)}
-          >
-            <option value="">All Statuses</option>
-            <option value="pending">Pending</option>
-            <option value="subscribed">Subscribed</option>
-            <option value="unsubscribed">Unsubscribed</option>
-          </Select>
-        </div>
+        {(searchTerm || statusFilter || interestFilter || dateFromFilter || dateToFilter) && (
+          <div className="mt-4 flex gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                setSearchTerm('');
+                setStatusFilter('');
+                setInterestFilter('');
+                setDateFromFilter('');
+                setDateToFilter('');
+              }}
+            >
+              Clear Filters
+            </Button>
+          </div>
+        )}
       </div>
 
       {/* Bulk Actions */}
       {selectedSubscriptions.length > 0 && (
         <div className="flex flex-wrap gap-2 mb-4">
+          <Button
+            variant="primary"
+            onClick={() => setIsBulkEmailModalOpen(true)}
+          >
+            Send Email ({selectedSubscriptions.length})
+          </Button>
           <Button variant="outline" onClick={() => handleBulkStatusChange('subscribed')}>
             Subscribe ({selectedSubscriptions.length})
           </Button>
@@ -323,6 +398,21 @@ export default function NewsletterPage() {
           />
         </ModalBody>
       </Modal>
+
+      {/* Bulk Email Modal */}
+      <BulkEmailModal
+        isOpen={isBulkEmailModalOpen}
+        onClose={() => setIsBulkEmailModalOpen(false)}
+        selectedSubscriberIds={selectedSubscriptions}
+        onEmailSent={handleBulkEmailSent}
+      />
+
+      {/* Import Modal */}
+      <ImportModal
+        isOpen={isImportModalOpen}
+        onClose={() => setIsImportModalOpen(false)}
+        onImportComplete={handleImportComplete}
+      />
     </div>
   );
 }

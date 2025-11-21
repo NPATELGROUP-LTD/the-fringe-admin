@@ -270,6 +270,93 @@ CREATE TABLE statistics (
   updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
+-- Email Templates Table
+CREATE TABLE email_templates (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  name VARCHAR(255) UNIQUE NOT NULL,
+  subject VARCHAR(255) NOT NULL,
+  content TEXT NOT NULL,
+  category VARCHAR(100) DEFAULT 'general',
+  variables JSONB DEFAULT '[]',
+  is_active BOOLEAN DEFAULT true,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Email SMTP Settings Table
+CREATE TABLE email_smtp_settings (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  host VARCHAR(255) NOT NULL,
+  port INTEGER NOT NULL,
+  username VARCHAR(255),
+  password VARCHAR(255),
+  encryption VARCHAR(20) DEFAULT 'tls' CHECK (encryption IN ('none', 'ssl', 'tls')),
+  from_email VARCHAR(255) NOT NULL,
+  from_name VARCHAR(255),
+  is_active BOOLEAN DEFAULT true,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Email Triggers Table
+CREATE TABLE email_triggers (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  name VARCHAR(255) NOT NULL,
+  event_type VARCHAR(100) NOT NULL,
+  template_id UUID REFERENCES email_templates(id) ON DELETE CASCADE,
+  conditions JSONB DEFAULT '{}',
+  is_active BOOLEAN DEFAULT true,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Email Campaigns Table
+CREATE TABLE email_campaigns (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  name VARCHAR(255) NOT NULL,
+  subject VARCHAR(255) NOT NULL,
+  content TEXT NOT NULL,
+  template_id UUID REFERENCES email_templates(id) ON DELETE SET NULL,
+  segment_filters JSONB DEFAULT '{}',
+  status VARCHAR(20) DEFAULT 'draft' CHECK (status IN ('draft', 'scheduled', 'sending', 'sent', 'paused', 'cancelled')),
+  scheduled_at TIMESTAMPTZ,
+  sent_at TIMESTAMPTZ,
+  total_recipients INTEGER DEFAULT 0,
+  sent_count INTEGER DEFAULT 0,
+  opened_count INTEGER DEFAULT 0,
+  clicked_count INTEGER DEFAULT 0,
+  bounced_count INTEGER DEFAULT 0,
+  unsubscribed_count INTEGER DEFAULT 0,
+  created_by UUID REFERENCES admin_users(id) ON DELETE SET NULL,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Email Campaign Sends Table
+CREATE TABLE email_campaign_sends (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  campaign_id UUID REFERENCES email_campaigns(id) ON DELETE CASCADE,
+  subscriber_id UUID REFERENCES newsletter_subscriptions(id) ON DELETE CASCADE,
+  sent_at TIMESTAMPTZ DEFAULT NOW(),
+  opened_at TIMESTAMPTZ,
+  clicked_at TIMESTAMPTZ,
+  bounced_at TIMESTAMPTZ,
+  unsubscribed_at TIMESTAMPTZ,
+  status VARCHAR(20) DEFAULT 'sent' CHECK (status IN ('sent', 'delivered', 'opened', 'clicked', 'bounced', 'unsubscribed')),
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Email Campaign Analytics Table
+CREATE TABLE email_campaign_analytics (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  campaign_id UUID REFERENCES email_campaigns(id) ON DELETE CASCADE,
+  metric VARCHAR(50) NOT NULL,
+  value INTEGER NOT NULL,
+  period_start TIMESTAMPTZ NOT NULL,
+  period_end TIMESTAMPTZ NOT NULL,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
 -- Enable RLS on all new tables
 ALTER TABLE courses ENABLE ROW LEVEL SECURITY;
 ALTER TABLE courses_categories ENABLE ROW LEVEL SECURITY;
@@ -462,3 +549,65 @@ CREATE POLICY "Admin and super_admin manage statistics" ON statistics
 
 CREATE POLICY "Public can view statistics" ON statistics
   FOR SELECT USING (true);
+
+-- Enable RLS on email tables
+ALTER TABLE email_templates ENABLE ROW LEVEL SECURITY;
+ALTER TABLE email_smtp_settings ENABLE ROW LEVEL SECURITY;
+ALTER TABLE email_triggers ENABLE ROW LEVEL SECURITY;
+ALTER TABLE email_campaigns ENABLE ROW LEVEL SECURITY;
+ALTER TABLE email_campaign_sends ENABLE ROW LEVEL SECURITY;
+ALTER TABLE email_campaign_analytics ENABLE ROW LEVEL SECURITY;
+
+-- Email Templates policies
+CREATE POLICY "Admin and super_admin manage email templates" ON email_templates
+  FOR ALL USING (
+    EXISTS (
+      SELECT 1 FROM admin_users au
+      WHERE au.id = auth.uid() AND au.role IN ('admin', 'super_admin')
+    )
+  );
+
+-- Email SMTP Settings policies
+CREATE POLICY "Admin and super_admin manage SMTP settings" ON email_smtp_settings
+  FOR ALL USING (
+    EXISTS (
+      SELECT 1 FROM admin_users au
+      WHERE au.id = auth.uid() AND au.role IN ('admin', 'super_admin')
+    )
+  );
+
+-- Email Triggers policies
+CREATE POLICY "Admin and super_admin manage email triggers" ON email_triggers
+  FOR ALL USING (
+    EXISTS (
+      SELECT 1 FROM admin_users au
+      WHERE au.id = auth.uid() AND au.role IN ('admin', 'super_admin')
+    )
+  );
+
+-- Email Campaigns policies
+CREATE POLICY "Admin and super_admin manage email campaigns" ON email_campaigns
+  FOR ALL USING (
+    EXISTS (
+      SELECT 1 FROM admin_users au
+      WHERE au.id = auth.uid() AND au.role IN ('admin', 'super_admin')
+    )
+  );
+
+-- Email Campaign Sends policies
+CREATE POLICY "Admin and super_admin manage campaign sends" ON email_campaign_sends
+  FOR ALL USING (
+    EXISTS (
+      SELECT 1 FROM admin_users au
+      WHERE au.id = auth.uid() AND au.role IN ('admin', 'super_admin')
+    )
+  );
+
+-- Email Campaign Analytics policies
+CREATE POLICY "Admin and super_admin manage campaign analytics" ON email_campaign_analytics
+  FOR ALL USING (
+    EXISTS (
+      SELECT 1 FROM admin_users au
+      WHERE au.id = auth.uid() AND au.role IN ('admin', 'super_admin')
+    )
+  );
