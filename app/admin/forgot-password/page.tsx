@@ -3,37 +3,35 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useForm } from 'react-hook-form';
-import { auth, adminAuth } from '@/lib/auth';
+import { auth } from '@/lib/auth';
 
-interface LoginFormData {
+interface ForgotPasswordFormData {
   email: string;
-  password: string;
 }
 
-export default function AdminLogin() {
+export default function ForgotPassword() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState(false);
   const router = useRouter();
 
   const {
     register,
     handleSubmit,
     formState: { errors },
-  } = useForm<LoginFormData>();
+  } = useForm<ForgotPasswordFormData>();
 
-  const onSubmit = async (data: LoginFormData) => {
+  const onSubmit = async (data: ForgotPasswordFormData) => {
     setIsLoading(true);
     setError(null);
 
     try {
-      const { data: authData, error } = await auth.signIn(data.email, data.password);
+      const { error } = await auth.resetPassword(data.email);
 
       if (error) {
         setError(error.message);
-      } else if (authData.user) {
-        // Update last login
-        await adminAuth.updateLastLogin(authData.user.id);
-        router.push('/admin');
+      } else {
+        setSuccess(true);
       }
     } catch (err) {
       setError('An unexpected error occurred');
@@ -42,10 +40,33 @@ export default function AdminLogin() {
     }
   };
 
+  if (success) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-primary p-4">
+        <div className="bg-secondary p-8 rounded border border-theme w-full max-w-md text-center">
+          <h1 className="text-2xl font-bold text-primary mb-4">Check Your Email</h1>
+          <p className="text-primary mb-6">
+            If an account with that email exists, we've sent you a password reset link.
+            Please check your email and follow the instructions.
+          </p>
+          <button
+            onClick={() => router.push('/admin/login')}
+            className="w-full bg-primary text-secondary py-2 px-4 hover:bg-secondary hover:text-primary border border-theme transition-colors"
+          >
+            Back to Login
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen flex items-center justify-center bg-primary p-4">
       <div className="bg-secondary p-8 rounded border border-theme w-full max-w-md">
-        <h1 className="text-2xl font-bold text-primary mb-6 text-center">Admin Login</h1>
+        <h1 className="text-2xl font-bold text-primary mb-6 text-center">Forgot Password</h1>
+        <p className="text-primary mb-6 text-center text-sm">
+          Enter your email address and we'll send you a link to reset your password.
+        </p>
 
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
           <div>
@@ -64,22 +85,6 @@ export default function AdminLogin() {
             )}
           </div>
 
-          <div>
-            <label htmlFor="password" className="block text-sm font-medium text-primary mb-1">
-              Password
-            </label>
-            <input
-              id="password"
-              type="password"
-              {...register('password', { required: 'Password is required' })}
-              className="w-full px-3 py-2 bg-primary border border-theme text-primary placeholder-secondary focus:outline-none focus:border-primary"
-              placeholder="Enter your password"
-            />
-            {errors.password && (
-              <p className="text-red-500 text-sm mt-1">{errors.password.message}</p>
-            )}
-          </div>
-
           {error && (
             <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded">
               {error}
@@ -91,16 +96,16 @@ export default function AdminLogin() {
             disabled={isLoading}
             className="w-full bg-primary text-secondary py-2 px-4 hover:bg-secondary hover:text-primary border border-theme transition-colors disabled:opacity-50"
           >
-            {isLoading ? 'Signing in...' : 'Sign In'}
+            {isLoading ? 'Sending...' : 'Send Reset Link'}
           </button>
 
           <div className="text-center">
             <button
               type="button"
-              onClick={() => router.push('/admin/forgot-password')}
+              onClick={() => router.push('/admin/login')}
               className="text-primary hover:text-secondary transition-colors text-sm"
             >
-              Forgot your password?
+              Back to Login
             </button>
           </div>
         </form>
