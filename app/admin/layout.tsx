@@ -1,8 +1,17 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { AdminSidebar } from '@/components/AdminSidebar';
-import { AdminTopBar } from '@/components/AdminTopBar';
+import { useState, useEffect, Suspense } from 'react';
+import dynamic from 'next/dynamic';
+import ErrorBoundary from '@/components/ErrorBoundary';
+import { useGlobalKeyboardShortcuts } from '@/lib/hooks/useKeyboardShortcuts';
+
+// Lazy load components
+const AdminSidebar = dynamic(() => import('@/components/AdminSidebar').then(mod => ({ default: mod.AdminSidebar })), {
+  loading: () => <div className="w-64 bg-secondary animate-pulse" />
+});
+const AdminTopBar = dynamic(() => import('@/components/AdminTopBar').then(mod => ({ default: mod.AdminTopBar })), {
+  loading: () => <div className="h-16 bg-primary animate-pulse" />
+});
 
 export default function AdminLayout({
   children,
@@ -11,6 +20,9 @@ export default function AdminLayout({
 }) {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
+
+  // Enable global keyboard shortcuts
+  useGlobalKeyboardShortcuts();
 
   useEffect(() => {
     const checkMobile = () => {
@@ -32,11 +44,13 @@ export default function AdminLayout({
           ? `fixed inset-y-0 left-0 z-50 transform ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'} transition-transform duration-300 ease-in-out`
           : 'relative'
       }`}>
-        <AdminSidebar
-          isCollapsed={!isMobile && !isSidebarOpen}
-          onToggle={toggleSidebar}
-          isMobile={isMobile}
-        />
+        <Suspense fallback={<div className="w-64 bg-secondary animate-pulse" />}>
+          <AdminSidebar
+            isCollapsed={!isMobile && !isSidebarOpen}
+            onToggle={toggleSidebar}
+            isMobile={isMobile}
+          />
+        </Suspense>
       </div>
 
       {/* Mobile overlay */}
@@ -49,9 +63,13 @@ export default function AdminLayout({
 
       {/* Main content */}
       <div className={`flex-1 flex flex-col ${isMobile ? 'ml-0' : ''}`}>
-        <AdminTopBar onToggleSidebar={toggleSidebar} />
+        <Suspense fallback={<div className="h-16 bg-primary animate-pulse" />}>
+          <AdminTopBar onToggleSidebar={toggleSidebar} />
+        </Suspense>
         <main className="flex-1 p-4 md:p-6 overflow-auto">
-          {children}
+          <ErrorBoundary>
+            {children}
+          </ErrorBoundary>
         </main>
       </div>
     </div>

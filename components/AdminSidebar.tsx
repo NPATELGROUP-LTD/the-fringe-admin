@@ -18,6 +18,7 @@ const sidebarItems: SidebarItem[] = [
   { name: 'Engagement', href: '/admin/engagement', icon: '👥' },
   { name: 'Email', href: '/admin/email', icon: '📧' },
   { name: 'Settings', href: '/admin/settings', icon: '⚙️' },
+  { name: 'Help', href: '/admin/help', icon: '❓' },
 ];
 
 interface AdminSidebarProps {
@@ -32,7 +33,7 @@ export function AdminSidebar({ isCollapsed, onToggle, isMobile = false }: AdminS
   return (
     <div className={`bg-secondary border-r border-theme transition-all duration-300 ${
       isMobile ? 'w-64' : (isCollapsed ? 'w-16' : 'w-64')
-    }`}>
+    }`} data-tour="sidebar">
       <div className="flex items-center justify-between p-4 border-b border-theme">
         <h2 className={`text-lg font-semibold text-primary ${isMobile || !isCollapsed ? '' : 'hidden'}`}>Admin Panel</h2>
         {!isMobile && (

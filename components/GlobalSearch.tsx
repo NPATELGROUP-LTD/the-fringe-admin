@@ -156,6 +156,12 @@ export function GlobalSearch() {
             }
           }}
           className="w-64 pl-10 pr-4"
+          aria-label="Global search"
+          aria-expanded={isOpen}
+          aria-haspopup="listbox"
+          role="combobox"
+          aria-autocomplete="list"
+          aria-activedescendant={selectedIndex >= 0 ? `search-result-${selectedIndex}` : undefined}
         />
         <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
           <svg
@@ -180,7 +186,11 @@ export function GlobalSearch() {
       </div>
 
       {isOpen && data?.results && data.results.length > 0 && (
-        <div className="absolute z-50 mt-1 w-full bg-secondary border border-theme rounded-md shadow-lg max-h-96 overflow-y-auto">
+        <div
+          className="absolute z-50 mt-1 w-full bg-secondary border border-theme rounded-md shadow-lg max-h-96 overflow-y-auto"
+          role="listbox"
+          aria-label="Search results"
+        >
           <div className="p-2">
             <div className="text-xs text-primary mb-2 px-2">
               {data.total > data.results.length
@@ -191,12 +201,15 @@ export function GlobalSearch() {
             {data.results.map((result, index) => (
               <button
                 key={`${result.type}-${result.id}`}
+                id={`search-result-${index}`}
                 onClick={() => handleResultClick(result)}
                 className={`w-full text-left px-3 py-2 rounded-md transition-colors ${
                   index === selectedIndex
                     ? 'bg-primary text-secondary'
                     : 'hover:bg-primary hover:bg-opacity-10'
                 }`}
+                role="option"
+                aria-selected={index === selectedIndex}
               >
                 <div className="flex items-start justify-between">
                   <div className="flex-1 min-w-0">

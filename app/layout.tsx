@@ -4,6 +4,7 @@ import { Inter } from 'next/font/google'
 
 import './globals.css'
 import { ThemeProvider } from '@/components/ThemeProvider'
+import { WebVitals } from '@/components/WebVitals'
 
 const inter = Inter({ subsets: ['latin'] })
 
@@ -23,6 +24,7 @@ export default function RootLayout({
         <ThemeProvider>
           {children}
         </ThemeProvider>
+        <WebVitals />
       </body>
     </html>
   )

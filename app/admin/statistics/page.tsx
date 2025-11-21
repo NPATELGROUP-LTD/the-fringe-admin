@@ -1,6 +1,7 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Suspense } from 'react';
+import dynamic from 'next/dynamic';
 import { useApiRequest } from '@/lib/hooks/useApiRequest';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
@@ -8,9 +9,14 @@ import { Input } from '@/components/ui/Input';
 import { Label } from '@/components/ui/Label';
 import { Select } from '@/components/ui/Select';
 import { Modal, ModalHeader, ModalBody, ModalFooter } from '@/components/ui/Modal';
-import { DataTable } from '@/components/ui/DataTable';
+import { LoadingIndicator } from '@/components/ui/LoadingIndicator';
 import StatisticsChart from '@/components/StatisticsChart';
 import type { Statistic } from '@/types/database';
+
+// Lazy load DataTable
+const DataTable = dynamic(() => import('@/components/ui/DataTable').then(mod => ({ default: mod.DataTable })), {
+  loading: () => <LoadingIndicator text="Loading table..." />
+});
 
 interface CreateStatisticForm {
   key: string;
@@ -196,12 +202,14 @@ export default function StatisticsPage() {
         </CardHeader>
         <CardContent>
           {loading ? (
-            <div className="text-center py-4">Loading statistics...</div>
+            <div className="text-center py-4">
+              <LoadingIndicator text="Loading statistics..." />
+            </div>
           ) : (
             <DataTable
               data={statistics}
               columns={columns}
-              onEdit={(statistic) => setEditingStatistic(statistic)}
+              onEdit={(statistic) => setEditingStatistic(statistic as Statistic)}
             />
           )}
         </CardContent>
@@ -215,7 +223,10 @@ export default function StatisticsPage() {
           resetForm();
         }}
       >
-        <ModalHeader>Create New Statistic</ModalHeader>
+        <ModalHeader onClose={() => {
+          setShowCreateModal(false);
+          resetForm();
+        }}>Create New Statistic</ModalHeader>
         <ModalBody>
           <div>
             <Label htmlFor="key">Key</Label>
@@ -293,7 +304,7 @@ export default function StatisticsPage() {
           isOpen={!!editingStatistic}
           onClose={() => setEditingStatistic(null)}
         >
-          <ModalHeader>Edit Statistic</ModalHeader>
+          <ModalHeader onClose={() => setEditingStatistic(null)}>Edit Statistic</ModalHeader>
           <ModalBody>
             <div className="space-y-4">
             <div>

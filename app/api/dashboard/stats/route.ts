@@ -31,7 +31,6 @@ interface TestimonialData {
 
 export async function GET(request: NextRequest) {
   try {
-
     // Get current month start and end
     const now = new Date();
     const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
@@ -136,7 +135,7 @@ export async function GET(request: NextRequest) {
     const revenueTrend = 0; // Placeholder
     const bookingTrend = contactsTrend; // Using contacts as proxy for bookings
 
-    return createSuccessResponse({
+    const response = createSuccessResponse({
       statistics: {
         totalCourses,
         totalServices,
@@ -173,6 +172,11 @@ export async function GET(request: NextRequest) {
         }
       }
     });
+
+    // Add cache headers for 5 minutes
+    response.headers.set('Cache-Control', 'public, s-maxage=300, stale-while-revalidate=600');
+
+    return response;
 
   } catch (error) {
     return handleApiError(error);

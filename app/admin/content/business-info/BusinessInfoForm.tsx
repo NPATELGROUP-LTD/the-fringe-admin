@@ -8,6 +8,7 @@ import { Textarea } from '@/components/ui/Textarea';
 import { Select } from '@/components/ui/Select';
 import { Label } from '@/components/ui/Label';
 import { ModalFooter } from '@/components/ui/Modal';
+import { Tooltip } from '@/components/ui/Tooltip';
 import { useApiRequest } from '@/lib/hooks/useApiRequest';
 import type { BusinessInfo } from '@/types/database';
 
@@ -144,7 +145,7 @@ export function BusinessInfoForm({ businessInfo, onSave, onCancel }: BusinessInf
               placeholder="Enter text content"
               rows={3}
             />
-            {errors.value && <p className="text-red-500 text-sm">{errors.value.message}</p>}
+            {errors.value && <p className="text-red-500 text-sm">{String(errors.value.message)}</p>}
           </div>
         );
 
@@ -207,12 +208,13 @@ export function BusinessInfoForm({ businessInfo, onSave, onCancel }: BusinessInf
                   <div key={day} className="flex items-center gap-3">
                     <div className="w-20 capitalize">{day}</div>
                     <input
+                      id={`closed-${day}`}
                       type="checkbox"
                       checked={dayData.closed || false}
                       onChange={(e) => updateHours(day, 'closed', e.target.checked)}
                       className="mr-2"
                     />
-                    <Label className="mr-2">Closed</Label>
+                    <Label htmlFor={`closed-${day}`} className="mr-2">Closed</Label>
                     {!dayData.closed && (
                       <>
                         <Input
@@ -286,7 +288,12 @@ export function BusinessInfoForm({ businessInfo, onSave, onCancel }: BusinessInf
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
       <div>
-        <Label htmlFor="key">Key *</Label>
+        <div className="flex items-center space-x-2">
+          <Label htmlFor="key">Key *</Label>
+          <Tooltip content="A unique identifier for this business information (e.g., contact_email, business_address)">
+            <span className="text-primary cursor-help">?</span>
+          </Tooltip>
+        </div>
         <Input
           id="key"
           {...register('key', { required: 'Key is required' })}
@@ -296,7 +303,12 @@ export function BusinessInfoForm({ businessInfo, onSave, onCancel }: BusinessInf
       </div>
 
       <div>
-        <Label htmlFor="type">Type *</Label>
+        <div className="flex items-center space-x-2">
+          <Label htmlFor="type">Type *</Label>
+          <Tooltip content="Choose the data type for this information. Different types have different input formats and validation.">
+            <span className="text-primary cursor-help">?</span>
+          </Tooltip>
+        </div>
         <Select
           id="type"
           value={selectedType}

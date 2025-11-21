@@ -1,11 +1,20 @@
 
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, Suspense } from 'react';
 import Link from 'next/link';
+import dynamic from 'next/dynamic';
 import { useApiRequest } from '@/lib/hooks/useApiRequest';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
+import { ErrorMessage } from '@/components/ui/ErrorMessage';
+import { useOnboarding } from '@/components/Onboarding';
+
+// Lazy load Onboarding component
+const Onboarding = dynamic(() => import('@/components/Onboarding').then(mod => ({ default: mod.Onboarding })), {
+  loading: () => null,
+  ssr: false
+});
 
 interface DashboardStats {
   statistics: {
@@ -37,6 +46,41 @@ interface DashboardStats {
 export default function AdminDashboard() {
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const { data, loading, error, request } = useApiRequest<DashboardStats>();
+
+  const { hasCompleted, markCompleted } = useOnboarding('dashboard-tour');
+
+  const tourSteps = [
+    {
+      target: '[data-tour="dashboard-title"]',
+      title: 'Welcome to Your Dashboard!',
+      content: 'This is your main dashboard where you can see an overview of your business metrics and recent activity.',
+      position: 'bottom' as const
+    },
+    {
+      target: '[data-tour="stats-cards"]',
+      title: 'Key Statistics',
+      content: 'These cards show important metrics like total courses, services, contacts, and newsletter subscribers.',
+      position: 'top' as const
+    },
+    {
+      target: '[data-tour="recent-activity"]',
+      title: 'Recent Activity',
+      content: 'Stay updated with the latest activity on your site, including new contacts and reviews.',
+      position: 'left' as const
+    },
+    {
+      target: '[data-tour="quick-actions"]',
+      title: 'Quick Actions',
+      content: 'Use these buttons for common tasks like adding courses, services, or sending emails.',
+      position: 'right' as const
+    },
+    {
+      target: '[data-tour="sidebar"]',
+      title: 'Navigation Sidebar',
+      content: 'Access all admin features through the sidebar. Click the toggle button to collapse/expand it.',
+      position: 'right' as const
+    }
+  ];
 
   useEffect(() => {
     request('/api/dashboard/stats');
@@ -85,7 +129,7 @@ export default function AdminDashboard() {
     return (
       <div className="mobile-padding md:p-0">
         <h1 className="text-xl md:text-2xl font-bold text-primary mb-4 md:mb-6">Dashboard</h1>
-        <div className="text-red-600">Failed to load dashboard data</div>
+        <ErrorMessage error={error || "Failed to load dashboard data"} variant="block" />
       </div>
     );
   }
@@ -93,7 +137,7 @@ export default function AdminDashboard() {
   return (
     <div className="mobile-padding md:p-0 space-y-6">
       <div className="flex justify-between items-center">
-        <h1 className="text-xl md:text-2xl font-bold text-primary">Dashboard</h1>
+        <h1 className="text-xl md:text-2xl font-bold text-primary" data-tour="dashboard-title">Dashboard</h1>
         <div className="flex gap-2">
           <Link href="/admin/analytics">
             <Button variant="outline" size="sm">
@@ -104,7 +148,7 @@ export default function AdminDashboard() {
       </div>
 
       {/* Statistics Widgets */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6" data-tour="stats-cards">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Total Courses</CardTitle>
@@ -224,7 +268,7 @@ export default function AdminDashboard() {
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Recent Activity */}
-        <Card>
+        <Card data-tour="recent-activity">
           <CardHeader>
             <CardTitle>Recent Activity</CardTitle>
           </CardHeader>
@@ -255,7 +299,7 @@ export default function AdminDashboard() {
         </Card>
 
         {/* Quick Actions */}
-        <Card>
+        <Card data-tour="quick-actions">
           <CardHeader>
             <CardTitle>Quick Actions</CardTitle>
           </CardHeader>
@@ -332,6 +376,12 @@ export default function AdminDashboard() {
           </div>
         </CardContent>
       </Card>
+
+      <Onboarding
+        steps={tourSteps}
+        onComplete={markCompleted}
+        autoStart={!hasCompleted}
+      />
     </div>
   );
 }

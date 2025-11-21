@@ -41,6 +41,44 @@ button, a, input, select, textarea {
   min-width: 44px;
 }
 
+/* Performance optimizations for Core Web Vitals */
+
+/* Prevent layout shifts by reserving space for images */
+img {
+  aspect-ratio: 16/9;
+  width: 100%;
+  height: auto;
+}
+
+/* Optimize font loading */
+@font-face {
+  font-family: 'Inter';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url('https://fonts.gstatic.com/s/inter/v12/UcCO3FwrK3iLTeHuS_fvQtMwCp50KnMw2boKoduKmMEVuLyfAZ9hiJ-Ek-_EeA.woff2') format('woff2');
+}
+
+/* Reduce paint and layout operations */
+* {
+  contain: layout style paint;
+}
+
+/* Optimize animations */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* Preload critical resources */
+.critical-resource {
+  content-visibility: auto;
+  contain-intrinsic-size: 200px;
+}
+
 /* Responsive utilities */
 @media (max-width: 767px) {
   .mobile-padding {
