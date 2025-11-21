@@ -34,3 +34,16 @@
 .text-primary { color: var(--text-primary); }
 .text-secondary { color: var(--text-secondary); }
 .border-theme { border-color: var(--border-color); }
+
+/* Touch-friendly interactive elements */
+button, a, input, select, textarea {
+  min-height: 44px;
+  min-width: 44px;
+}
+
+/* Responsive utilities */
+@media (max-width: 767px) {
+  .mobile-padding {
+    padding: 1rem;
+  }
+}

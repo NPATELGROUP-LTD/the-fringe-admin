@@ -21,22 +21,36 @@ const sidebarItems: SidebarItem[] = [
 interface AdminSidebarProps {
   isCollapsed: boolean;
   onToggle: () => void;
+  isMobile?: boolean;
 }
 
-export function AdminSidebar({ isCollapsed, onToggle }: AdminSidebarProps) {
+export function AdminSidebar({ isCollapsed, onToggle, isMobile = false }: AdminSidebarProps) {
   const pathname = usePathname();
 
   return (
-    <div className={`bg-secondary border-r border-theme transition-all duration-300 ${isCollapsed ? 'w-16' : 'w-64'}`}>
+    <div className={`bg-secondary border-r border-theme transition-all duration-300 ${
+      isMobile ? 'w-64' : (isCollapsed ? 'w-16' : 'w-64')
+    }`}>
       <div className="flex items-center justify-between p-4 border-b border-theme">
-        {!isCollapsed && <h2 className="text-lg font-semibold text-primary">Admin Panel</h2>}
-        <button
-          onClick={onToggle}
-          className="p-2 text-primary hover:bg-primary transition-colors"
-          aria-label={isCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
-        >
-          {isCollapsed ? '▶' : '◀'}
-        </button>
+        <h2 className={`text-lg font-semibold text-primary ${isMobile || !isCollapsed ? '' : 'hidden'}`}>Admin Panel</h2>
+        {!isMobile && (
+          <button
+            onClick={onToggle}
+            className="p-2 text-primary hover:bg-primary transition-colors"
+            aria-label={isCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+          >
+            {isCollapsed ? '▶' : '◀'}
+          </button>
+        )}
+        {isMobile && (
+          <button
+            onClick={onToggle}
+            className="p-2 text-primary hover:bg-primary transition-colors"
+            aria-label="Close sidebar"
+          >
+            ✕
+          </button>
+        )}
       </div>
       <nav className="p-4">
         <ul className="space-y-2">
@@ -44,14 +58,15 @@ export function AdminSidebar({ isCollapsed, onToggle }: AdminSidebarProps) {
             <li key={item.href}>
               <Link
                 href={item.href}
-                className={`flex items-center p-2 rounded transition-colors ${
+                className={`flex items-center p-3 rounded transition-colors min-h-[44px] ${
                   pathname === item.href
                     ? 'bg-primary text-secondary'
                     : 'text-primary hover:bg-primary hover:text-secondary'
-                } ${isCollapsed ? 'justify-center' : ''}`}
+                } ${!isMobile && isCollapsed ? 'justify-center' : ''}`}
+                onClick={isMobile ? onToggle : undefined}
               >
                 <span className="text-xl">{item.icon}</span>
-                {!isCollapsed && <span className="ml-3">{item.name}</span>}
+                {(!isMobile || !isCollapsed) && <span className="ml-3">{item.name}</span>}
               </Link>
             </li>
           ))}
