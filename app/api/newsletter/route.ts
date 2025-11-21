@@ -8,6 +8,7 @@ import {
   handleOptionsRequest,
 } from '@/lib/api/utils';
 import { supabaseAdmin } from '@/lib/supabase/client';
+import { StatisticsTracker } from '@/lib/statistics';
 import type { NewsletterSubscription } from '@/types/database';
 
 // Types for this endpoint
@@ -156,6 +157,17 @@ export async function POST(request: NextRequest) {
       .single();
 
     if (error) throw error;
+
+    // Update statistics in real-time
+    try {
+      await StatisticsTracker.incrementStatistic({
+        key: 'total_newsletter_subscribers',
+        increment: 1
+      });
+    } catch (statsError) {
+      console.error('Failed to update newsletter statistics:', statsError);
+      // Don't fail the request if statistics update fails
+    }
 
     return createSuccessResponse(data, 'Newsletter subscription created successfully', HTTP_STATUS.CREATED);
   } catch (error) {

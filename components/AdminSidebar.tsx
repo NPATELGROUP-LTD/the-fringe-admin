@@ -12,6 +12,8 @@ interface SidebarItem {
 
 const sidebarItems: SidebarItem[] = [
   { name: 'Dashboard', href: '/admin', icon: '📊' },
+  { name: 'Analytics', href: '/admin/analytics', icon: '📈' },
+  { name: 'Statistics', href: '/admin/statistics', icon: '📊' },
   { name: 'Content', href: '/admin/content', icon: '📝' },
   { name: 'Engagement', href: '/admin/engagement', icon: '👥' },
   { name: 'Email', href: '/admin/email', icon: '📧' },

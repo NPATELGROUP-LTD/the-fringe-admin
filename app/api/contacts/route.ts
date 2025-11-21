@@ -8,6 +8,7 @@ import {
   handleOptionsRequest,
 } from '@/lib/api/utils';
 import { supabaseAdmin } from '@/lib/supabase/client';
+import { StatisticsTracker } from '@/lib/statistics';
 import type { ContactSubmission } from '@/types/database';
 
 // Types for this endpoint
@@ -118,6 +119,17 @@ export async function POST(request: NextRequest) {
       .single();
 
     if (error) throw error;
+
+    // Update statistics in real-time
+    try {
+      await StatisticsTracker.incrementStatistic({
+        key: 'total_contacts',
+        increment: 1
+      });
+    } catch (statsError) {
+      console.error('Failed to update contact statistics:', statsError);
+      // Don't fail the request if statistics update fails
+    }
 
     return createSuccessResponse(data, 'Contact submission created successfully', HTTP_STATUS.CREATED);
   } catch (error) {

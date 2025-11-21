@@ -2,6 +2,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import Link from 'next/link';
 import { useApiRequest } from '@/lib/hooks/useApiRequest';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
@@ -94,9 +95,11 @@ export default function AdminDashboard() {
       <div className="flex justify-between items-center">
         <h1 className="text-xl md:text-2xl font-bold text-primary">Dashboard</h1>
         <div className="flex gap-2">
-          <Button variant="outline" size="sm">
-            📊 View Reports
-          </Button>
+          <Link href="/admin/analytics">
+            <Button variant="outline" size="sm">
+              📊 View Reports
+            </Button>
+          </Link>
         </div>
       </div>
 
