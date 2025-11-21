@@ -2,6 +2,7 @@
 
 import { useRouter } from 'next/navigation';
 import { auth } from '@/lib/auth';
+import { useAuth } from '@/lib/hooks/useAuth';
 
 interface AdminTopBarProps {
   onToggleSidebar: () => void;
@@ -9,6 +10,7 @@ interface AdminTopBarProps {
 
 export function AdminTopBar({ onToggleSidebar }: AdminTopBarProps) {
   const router = useRouter();
+  const { adminUser } = useAuth();
 
   const handleLogout = async () => {
     await auth.signOut();
@@ -28,7 +30,9 @@ export function AdminTopBar({ onToggleSidebar }: AdminTopBarProps) {
       </div>
       <div className="flex flex-col md:flex-row md:items-center gap-2 md:gap-4">
         <div className="text-primary text-sm md:text-base">
-          <span>Welcome, Admin User</span>
+          <span>
+            Welcome, {adminUser?.email || 'Admin User'} ({adminUser?.role || 'Unknown'})
+          </span>
         </div>
         <button
           onClick={handleLogout}
