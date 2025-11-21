@@ -3,6 +3,7 @@
 import { useRouter } from 'next/navigation';
 import { auth } from '@/lib/auth';
 import { useAuth } from '@/lib/hooks/useAuth';
+import { Button } from './ui/Button';
 
 interface AdminTopBarProps {
   onToggleSidebar: () => void;
@@ -19,13 +20,15 @@ export function AdminTopBar({ onToggleSidebar }: AdminTopBarProps) {
   return (
     <header className="bg-secondary border-b border-theme px-4 py-3 flex flex-col md:flex-row md:items-center md:justify-between gap-2 md:gap-0">
       <div className="flex items-center">
-        <button
+        <Button
           onClick={onToggleSidebar}
-          className="p-3 text-primary hover:bg-primary transition-colors mr-4 min-h-[44px] min-w-[44px] flex items-center justify-center"
+          variant="ghost"
+          size="sm"
+          className="mr-4"
           aria-label="Toggle sidebar"
         >
           ☰
-        </button>
+        </Button>
         <h1 className="text-lg md:text-xl font-semibold text-primary">The Fringe Admin</h1>
       </div>
       <div className="flex flex-col md:flex-row md:items-center gap-2 md:gap-4">
@@ -34,12 +37,9 @@ export function AdminTopBar({ onToggleSidebar }: AdminTopBarProps) {
             Welcome, {adminUser?.email || 'Admin User'} ({adminUser?.role || 'Unknown'})
           </span>
         </div>
-        <button
-          onClick={handleLogout}
-          className="px-4 py-2 bg-primary text-secondary hover:bg-secondary hover:text-primary border border-theme transition-colors min-h-[44px] flex items-center justify-center"
-        >
+        <Button onClick={handleLogout} variant="outline">
           Logout
-        </button>
+        </Button>
       </div>
     </header>
   );

@@ -78,3 +78,387 @@ CREATE POLICY "Admin can view audit logs" ON admin_audit_log
 -- All authenticated users can insert audit logs
 CREATE POLICY "Authenticated users can insert audit logs" ON admin_audit_log
   FOR INSERT WITH CHECK (auth.uid() IS NOT NULL);
+
+-- Content Management Tables
+
+-- Courses Table
+CREATE TABLE courses (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  title VARCHAR(255) NOT NULL,
+  slug VARCHAR(255) UNIQUE NOT NULL,
+  description TEXT NOT NULL,
+  short_description TEXT,
+  price DECIMAL(10,2) NOT NULL,
+  duration INTEGER NOT NULL, -- in minutes
+  category_id UUID REFERENCES courses_categories(id) ON DELETE SET NULL,
+  image_url TEXT,
+  requirements JSONB,
+  tags TEXT[],
+  is_active BOOLEAN DEFAULT true,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Course Categories Table
+CREATE TABLE courses_categories (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  name VARCHAR(255) NOT NULL,
+  slug VARCHAR(255) UNIQUE NOT NULL,
+  description TEXT,
+  sort_order INTEGER DEFAULT 0,
+  is_active BOOLEAN DEFAULT true,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Services Table
+CREATE TABLE services (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  title VARCHAR(255) NOT NULL,
+  slug VARCHAR(255) UNIQUE NOT NULL,
+  description TEXT NOT NULL,
+  short_description TEXT,
+  price DECIMAL(10,2) NOT NULL,
+  duration INTEGER NOT NULL, -- in minutes
+  category_id UUID REFERENCES service_categories(id) ON DELETE SET NULL,
+  image_url TEXT,
+  features TEXT[],
+  is_active BOOLEAN DEFAULT true,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Service Categories Table
+CREATE TABLE service_categories (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  name VARCHAR(255) NOT NULL,
+  slug VARCHAR(255) UNIQUE NOT NULL,
+  description TEXT,
+  sort_order INTEGER DEFAULT 0,
+  is_active BOOLEAN DEFAULT true,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Offers Table
+CREATE TABLE offers (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  title VARCHAR(255) NOT NULL,
+  description TEXT NOT NULL,
+  discount_type VARCHAR(20) NOT NULL CHECK (discount_type IN ('percentage', 'fixed')),
+  discount_value DECIMAL(10,2) NOT NULL,
+  valid_from TIMESTAMPTZ NOT NULL,
+  valid_until TIMESTAMPTZ NOT NULL,
+  usage_limit INTEGER,
+  usage_count INTEGER DEFAULT 0,
+  is_active BOOLEAN DEFAULT true,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- User Engagement Tables
+
+-- Contact Submissions Table
+CREATE TABLE contact_submissions (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  name VARCHAR(255) NOT NULL,
+  email VARCHAR(255) NOT NULL,
+  phone VARCHAR(50),
+  subject VARCHAR(255) NOT NULL,
+  message TEXT NOT NULL,
+  is_read BOOLEAN DEFAULT false,
+  responded_at TIMESTAMPTZ,
+  response TEXT,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Newsletter Subscriptions Table
+CREATE TABLE newsletter_subscriptions (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  email VARCHAR(255) UNIQUE NOT NULL,
+  first_name VARCHAR(255),
+  last_name VARCHAR(255),
+  status VARCHAR(20) DEFAULT 'pending' CHECK (status IN ('subscribed', 'unsubscribed', 'pending')),
+  subscribed_at TIMESTAMPTZ DEFAULT NOW(),
+  unsubscribed_at TIMESTAMPTZ,
+  interests TEXT[],
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Reviews Table
+CREATE TABLE reviews (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  course_id UUID REFERENCES courses(id) ON DELETE CASCADE,
+  name VARCHAR(255) NOT NULL,
+  email VARCHAR(255) NOT NULL,
+  rating INTEGER NOT NULL CHECK (rating >= 1 AND rating <= 5),
+  title VARCHAR(255) NOT NULL,
+  content TEXT NOT NULL,
+  is_approved BOOLEAN DEFAULT false,
+  approved_at TIMESTAMPTZ,
+  approved_by UUID REFERENCES admin_users(id) ON DELETE SET NULL,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Testimonials Table
+CREATE TABLE testimonials (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  name VARCHAR(255) NOT NULL,
+  email VARCHAR(255) NOT NULL,
+  company VARCHAR(255),
+  position VARCHAR(255),
+  content TEXT NOT NULL,
+  rating INTEGER NOT NULL CHECK (rating >= 1 AND rating <= 5),
+  image_url TEXT,
+  is_featured BOOLEAN DEFAULT false,
+  is_approved BOOLEAN DEFAULT false,
+  approved_at TIMESTAMPTZ,
+  approved_by UUID REFERENCES admin_users(id) ON DELETE SET NULL,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Information Tables
+
+-- FAQs Table
+CREATE TABLE faqs (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  category VARCHAR(100),
+  question TEXT NOT NULL,
+  answer TEXT NOT NULL,
+  sort_order INTEGER DEFAULT 0,
+  is_active BOOLEAN DEFAULT true,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Business Info Table
+CREATE TABLE business_info (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  key VARCHAR(255) UNIQUE NOT NULL,
+  value JSONB NOT NULL,
+  type VARCHAR(20) NOT NULL CHECK (type IN ('text', 'email', 'phone', 'address', 'hours', 'social')),
+  is_active BOOLEAN DEFAULT true,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Site Settings Table
+CREATE TABLE site_settings (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  key VARCHAR(255) UNIQUE NOT NULL,
+  value JSONB NOT NULL,
+  type VARCHAR(20) NOT NULL CHECK (type IN ('string', 'number', 'boolean', 'json')),
+  category VARCHAR(100) NOT NULL,
+  description TEXT,
+  is_public BOOLEAN DEFAULT false,
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Statistics Table
+CREATE TABLE statistics (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  key VARCHAR(255) NOT NULL,
+  value DECIMAL(15,2) NOT NULL,
+  label VARCHAR(255) NOT NULL,
+  category VARCHAR(100) NOT NULL,
+  period VARCHAR(50),
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Enable RLS on all new tables
+ALTER TABLE courses ENABLE ROW LEVEL SECURITY;
+ALTER TABLE courses_categories ENABLE ROW LEVEL SECURITY;
+ALTER TABLE services ENABLE ROW LEVEL SECURITY;
+ALTER TABLE service_categories ENABLE ROW LEVEL SECURITY;
+ALTER TABLE offers ENABLE ROW LEVEL SECURITY;
+ALTER TABLE contact_submissions ENABLE ROW LEVEL SECURITY;
+ALTER TABLE newsletter_subscriptions ENABLE ROW LEVEL SECURITY;
+ALTER TABLE reviews ENABLE ROW LEVEL SECURITY;
+ALTER TABLE testimonials ENABLE ROW LEVEL SECURITY;
+ALTER TABLE faqs ENABLE ROW LEVEL SECURITY;
+ALTER TABLE business_info ENABLE ROW LEVEL SECURITY;
+ALTER TABLE site_settings ENABLE ROW LEVEL SECURITY;
+ALTER TABLE statistics ENABLE ROW LEVEL SECURITY;
+
+-- RLS Policies for Content Management Tables
+-- Admin and super_admin have full access, editors can only read
+
+-- Courses policies
+CREATE POLICY "Admin and super_admin manage courses" ON courses
+  FOR ALL USING (
+    EXISTS (
+      SELECT 1 FROM admin_users au
+      WHERE au.id = auth.uid() AND au.role IN ('admin', 'super_admin')
+    )
+  );
+
+CREATE POLICY "Editors can view courses" ON courses
+  FOR SELECT USING (
+    EXISTS (
+      SELECT 1 FROM admin_users au
+      WHERE au.id = auth.uid() AND au.role = 'editor'
+    )
+  );
+
+-- Course Categories policies
+CREATE POLICY "Admin and super_admin manage course categories" ON courses_categories
+  FOR ALL USING (
+    EXISTS (
+      SELECT 1 FROM admin_users au
+      WHERE au.id = auth.uid() AND au.role IN ('admin', 'super_admin')
+    )
+  );
+
+CREATE POLICY "Editors can view course categories" ON courses_categories
+  FOR SELECT USING (
+    EXISTS (
+      SELECT 1 FROM admin_users au
+      WHERE au.id = auth.uid() AND au.role = 'editor'
+    )
+  );
+
+-- Services policies
+CREATE POLICY "Admin and super_admin manage services" ON services
+  FOR ALL USING (
+    EXISTS (
+      SELECT 1 FROM admin_users au
+      WHERE au.id = auth.uid() AND au.role IN ('admin', 'super_admin')
+    )
+  );
+
+CREATE POLICY "Editors can view services" ON services
+  FOR SELECT USING (
+    EXISTS (
+      SELECT 1 FROM admin_users au
+      WHERE au.id = auth.uid() AND au.role = 'editor'
+    )
+  );
+
+-- Service Categories policies
+CREATE POLICY "Admin and super_admin manage service categories" ON service_categories
+  FOR ALL USING (
+    EXISTS (
+      SELECT 1 FROM admin_users au
+      WHERE au.id = auth.uid() AND au.role IN ('admin', 'super_admin')
+    )
+  );
+
+CREATE POLICY "Editors can view service categories" ON service_categories
+  FOR SELECT USING (
+    EXISTS (
+      SELECT 1 FROM admin_users au
+      WHERE au.id = auth.uid() AND au.role = 'editor'
+    )
+  );
+
+-- Offers policies
+CREATE POLICY "Admin and super_admin manage offers" ON offers
+  FOR ALL USING (
+    EXISTS (
+      SELECT 1 FROM admin_users au
+      WHERE au.id = auth.uid() AND au.role IN ('admin', 'super_admin')
+    )
+  );
+
+CREATE POLICY "Editors can view offers" ON offers
+  FOR SELECT USING (
+    EXISTS (
+      SELECT 1 FROM admin_users au
+      WHERE au.id = auth.uid() AND au.role = 'editor'
+    )
+  );
+
+-- RLS Policies for User Engagement Tables
+-- Only admin and super_admin have access
+
+-- Contact Submissions policies
+CREATE POLICY "Admin and super_admin manage contact submissions" ON contact_submissions
+  FOR ALL USING (
+    EXISTS (
+      SELECT 1 FROM admin_users au
+      WHERE au.id = auth.uid() AND au.role IN ('admin', 'super_admin')
+    )
+  );
+
+-- Newsletter Subscriptions policies
+CREATE POLICY "Admin and super_admin manage newsletter subscriptions" ON newsletter_submissions
+  FOR ALL USING (
+    EXISTS (
+      SELECT 1 FROM admin_users au
+      WHERE au.id = auth.uid() AND au.role IN ('admin', 'super_admin')
+    )
+  );
+
+-- Reviews policies
+CREATE POLICY "Admin and super_admin manage reviews" ON reviews
+  FOR ALL USING (
+    EXISTS (
+      SELECT 1 FROM admin_users au
+      WHERE au.id = auth.uid() AND au.role IN ('admin', 'super_admin')
+    )
+  );
+
+-- Testimonials policies
+CREATE POLICY "Admin and super_admin manage testimonials" ON testimonials
+  FOR ALL USING (
+    EXISTS (
+      SELECT 1 FROM admin_users au
+      WHERE au.id = auth.uid() AND au.role IN ('admin', 'super_admin')
+    )
+  );
+
+-- RLS Policies for Information Tables
+-- Admin and super_admin have full access, some public read access
+
+-- FAQs policies
+CREATE POLICY "Admin and super_admin manage FAQs" ON faqs
+  FOR ALL USING (
+    EXISTS (
+      SELECT 1 FROM admin_users au
+      WHERE au.id = auth.uid() AND au.role IN ('admin', 'super_admin')
+    )
+  );
+
+CREATE POLICY "Public can view active FAQs" ON faqs
+  FOR SELECT USING (is_active = true);
+
+-- Business Info policies
+CREATE POLICY "Admin and super_admin manage business info" ON business_info
+  FOR ALL USING (
+    EXISTS (
+      SELECT 1 FROM admin_users au
+      WHERE au.id = auth.uid() AND au.role IN ('admin', 'super_admin')
+    )
+  );
+
+CREATE POLICY "Public can view active business info" ON business_info
+  FOR SELECT USING (is_active = true);
+
+-- Site Settings policies
+CREATE POLICY "Admin and super_admin manage site settings" ON site_settings
+  FOR ALL USING (
+    EXISTS (
+      SELECT 1 FROM admin_users au
+      WHERE au.id = auth.uid() AND au.role IN ('admin', 'super_admin')
+    )
+  );
+
+CREATE POLICY "Public can view public site settings" ON site_settings
+  FOR SELECT USING (is_public = true);
+
+-- Statistics policies
+CREATE POLICY "Admin and super_admin manage statistics" ON statistics
+  FOR ALL USING (
+    EXISTS (
+      SELECT 1 FROM admin_users au
+      WHERE au.id = auth.uid() AND au.role IN ('admin', 'super_admin')
+    )
+  );
+
+CREATE POLICY "Public can view statistics" ON statistics
+  FOR SELECT USING (true);

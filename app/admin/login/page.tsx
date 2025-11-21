@@ -4,6 +4,9 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import { auth, adminAuth } from '@/lib/auth';
+import { Button } from '@/components/ui/Button';
+import { Input } from '@/components/ui/Input';
+import { Label } from '@/components/ui/Label';
 
 interface LoginFormData {
   email: string;
@@ -49,14 +52,13 @@ export default function AdminLogin() {
 
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
           <div>
-            <label htmlFor="email" className="block text-sm font-medium text-primary mb-1">
+            <Label htmlFor="email">
               Email
-            </label>
-            <input
+            </Label>
+            <Input
               id="email"
               type="email"
               {...register('email', { required: 'Email is required' })}
-              className="w-full px-3 py-2 bg-primary border border-theme text-primary placeholder-secondary focus:outline-none focus:border-primary"
               placeholder="admin@example.com"
             />
             {errors.email && (
@@ -65,14 +67,13 @@ export default function AdminLogin() {
           </div>
 
           <div>
-            <label htmlFor="password" className="block text-sm font-medium text-primary mb-1">
+            <Label htmlFor="password">
               Password
-            </label>
-            <input
+            </Label>
+            <Input
               id="password"
               type="password"
               {...register('password', { required: 'Password is required' })}
-              className="w-full px-3 py-2 bg-primary border border-theme text-primary placeholder-secondary focus:outline-none focus:border-primary"
               placeholder="Enter your password"
             />
             {errors.password && (
@@ -86,13 +87,13 @@ export default function AdminLogin() {
             </div>
           )}
 
-          <button
+          <Button
             type="submit"
             disabled={isLoading}
-            className="w-full bg-primary text-secondary py-2 px-4 hover:bg-secondary hover:text-primary border border-theme transition-colors disabled:opacity-50"
+            className="w-full"
           >
             {isLoading ? 'Signing in...' : 'Sign In'}
-          </button>
+          </Button>
 
           <div className="text-center">
             <button
