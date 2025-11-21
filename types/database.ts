@@ -149,6 +149,9 @@ export interface Review {
   is_approved: boolean;
   approved_at?: Timestamp;
   approved_by?: UUID;
+  response?: string;
+  responded_at?: Timestamp;
+  responded_by?: UUID;
   created_at: Timestamp;
   updated_at: Timestamp;
 }
