@@ -1,56 +1,68 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { supabaseAdmin } from '@/lib/supabase/client';
 import { createSuccessResponse, createErrorResponse, handleApiError } from '@/lib/api/utils';
+import { uploadFile, deleteFile, STORAGE_BUCKETS, FOLDER_STRUCTURE, FILE_CONSTRAINTS } from '@/lib/supabase/storage';
 
 export async function POST(request: NextRequest) {
   try {
     const formData = await request.formData();
     const file = formData.get('file') as File;
-    const bucket = formData.get('bucket') as string || 'public';
+    const bucket = (formData.get('bucket') as string) || STORAGE_BUCKETS.PUBLIC;
+    const folder = (formData.get('folder') as string) || FOLDER_STRUCTURE.TEMP;
+    const fileType = (formData.get('type') as 'image' | 'document' | 'video') || 'image';
+    const prefix = formData.get('prefix') as string;
 
     if (!file) {
       return createErrorResponse('No file provided', 400);
     }
 
-    // Validate file type
-    if (!file.type.startsWith('image/')) {
-      return createErrorResponse('Only image files are allowed', 400);
+    // Validate bucket
+    if (!Object.values(STORAGE_BUCKETS).includes(bucket as any)) {
+      return createErrorResponse('Invalid bucket specified', 400);
     }
 
-    // Validate file size (5MB limit)
-    if (file.size > 5 * 1024 * 1024) {
-      return createErrorResponse('File size must be less than 5MB', 400);
+    // Validate folder
+    if (!Object.values(FOLDER_STRUCTURE).includes(folder as any)) {
+      return createErrorResponse('Invalid folder specified', 400);
     }
 
-    // Generate unique filename
-    const fileExt = file.name.split('.').pop();
-    const fileName = `${Date.now()}-${Math.random().toString(36).substring(2)}.${fileExt}`;
+    // Upload file using storage utility
+    const result = await uploadFile(file, bucket, folder, {
+      prefix,
+    });
 
-    // Convert file to buffer
-    const arrayBuffer = await file.arrayBuffer();
-    const buffer = Buffer.from(arrayBuffer);
-
-    // Upload to Supabase Storage
-    const { data, error } = await supabaseAdmin.storage
-      .from(bucket)
-      .upload(fileName, buffer, {
-        contentType: file.type,
-        upsert: false,
-      });
-
-    if (error) {
-      console.error('Supabase upload error:', error);
-      return createErrorResponse('Failed to upload file', 500);
+    if (!result.success) {
+      return createErrorResponse(result.error || 'Upload failed', 400);
     }
 
-    // Get public URL
-    const { data: urlData } = supabaseAdmin.storage
-      .from(bucket)
-      .getPublicUrl(fileName);
+    return createSuccessResponse(result.data);
+  } catch (error) {
+    return handleApiError(error);
+  }
+}
+
+export async function DELETE(request: NextRequest) {
+  try {
+    const { searchParams } = new URL(request.url);
+    const path = searchParams.get('path');
+    const bucket = searchParams.get('bucket') || STORAGE_BUCKETS.PUBLIC;
+
+    if (!path) {
+      return createErrorResponse('File path is required', 400);
+    }
+
+    // Validate bucket
+    if (!Object.values(STORAGE_BUCKETS).includes(bucket as any)) {
+      return createErrorResponse('Invalid bucket specified', 400);
+    }
+
+    const result = await deleteFile(path, bucket);
+
+    if (!result.success) {
+      return createErrorResponse(result.error || 'Delete failed', 400);
+    }
 
     return createSuccessResponse({
-      url: urlData.publicUrl,
-      path: fileName,
+      message: 'File deleted successfully'
     });
   } catch (error) {
     return handleApiError(error);
@@ -64,7 +76,7 @@ export async function OPTIONS(request: NextRequest) {
     status: 200,
     headers: {
       'Access-Control-Allow-Origin': origin || 'http://localhost:3000',
-      'Access-Control-Allow-Methods': 'POST, OPTIONS',
+      'Access-Control-Allow-Methods': 'POST, DELETE, OPTIONS',
       'Access-Control-Allow-Headers': 'Content-Type, Authorization',
       'Access-Control-Allow-Credentials': 'true',
     },
